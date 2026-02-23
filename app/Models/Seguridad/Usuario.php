@@ -4,6 +4,7 @@ namespace App\Models\Seguridad;
 
 use App\Models\Admin\Empleado;
 use App\Models\Admin\Empresa;
+use App\Models\Admin\Gasto;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use App\Models\Admin\Rol;
 use Illuminate\Support\Facades\Hash;
@@ -61,10 +62,12 @@ class Usuario extends Authenticatable
     }
 
     public function empleados(){
-        return $this->belongsTo(Empleado::class, 'id');
+        return $this->belongsTo(Empleado::class, 'ide');
     }
 
-   
+      public function gasto(){
+        return $this->belongsTo(Gasto::class, 'usuario_id');
+    } 
     
 
 }

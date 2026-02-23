@@ -14,7 +14,7 @@ class CreateGastoTable extends Migration
     public function up()
     {
         Schema::create('gasto', function (Blueprint $table) {
-            $table->bigIncrements('id');
+            $table->bigIncrements('idg');
             $table->integer('monto');
             $table->string('descripcion', 150);
             $table->unsignedBigInteger('usuario_id');

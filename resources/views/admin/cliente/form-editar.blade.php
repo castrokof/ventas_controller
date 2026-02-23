@@ -83,7 +83,7 @@
         </div>
         <div class="col-lg-6">
             <label for="observacion" class="col-xs-8 control-label requerido">Observación</label>
-            <textarea name="observacion" id="observacion" class="form-control" rows="3" placeholder="Enter ..." value="{{old('observacion', $data->observacion ?? '')}}"></textarea>
+            <textarea name="observacion_cli" id="observacion" class="form-control" rows="3" placeholder="Enter ..." value="{{old('observacion', $data->observacion ?? '')}}"></textarea>
         </div>
 </div>
 

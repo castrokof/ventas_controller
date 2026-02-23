@@ -4,6 +4,7 @@
     Empresa
 @endsection
 @section("styles")
+<link href="{{asset("assets/$theme/plugins/datatables-responsive/css/responsive.bootstrap4.min.css")}}" rel="stylesheet" type="text/css"/>
 <link href="{{asset("assets/$theme/plugins/datatables-bs4/css/dataTables.bootstrap4.css")}}" rel="stylesheet" type="text/css"/>       
 @endsection
 
@@ -26,10 +27,10 @@
             </button>
           </div>
         </div>
-      <div class="card-body table-responsive p-0">
+      <div class="card-body table-responsive p-2">
         
-      <table id="empresa" class="table table-hover table-bordered text-nowrap">
-        {{-- <table id="empresa" class="table table-striped table-bordered"> --}}
+      <table id="empresa" class="table table-hover text-nowrap display responsive ">
+    
         <thead>
         <tr>  
               <th>Editar</th>
@@ -42,21 +43,7 @@
         </tr>
         </thead>
         <tbody>
-            {{-- @foreach ($datas as $data1)
-            <tr>
-                 <td>
-                <a href="{{route('editar_empresa', ['id' => $data1->id])}}" class="btn-accion-tabla tooltipsC" title="Editar este registro">
-                  <i class="fa fa-fw fa-pencil-alt"></i>
-                </a>
-                </td>
-                <td>{{$data1->id}}</td>
-                <td>{{$data1->nombre}}</td>
-                <td>{{$data1->tipo_documento}}</td>
-                <td>{{$data1->documento}}</td>
-                <td>{{$data1->activo}}</td>
-                                
-            </tr>
-        @endforeach           --}}
+
         </tbody>
       </table>
     </div>
@@ -160,6 +147,7 @@
 @section("scriptsPlugins")
 <script src="{{asset("assets/$theme/plugins/datatables/jquery.dataTables.js")}}" type="text/javascript"></script>
 <script src="{{asset("assets/$theme/plugins/datatables-bs4/js/dataTables.bootstrap4.js")}}" type="text/javascript"></script>
+<script src="{{asset("assets/$theme/plugins/datatables-responsive/js/dataTables.responsive.min.js")}}" type="text/javascript"></script>
 
 
 
@@ -179,6 +167,7 @@
         //.wrap("<div class='dataTables_borderWrap' />")   //if you are applying horizontal scrolling (sScrollX)
         .DataTable({
         language: idioma_espanol,
+        responsive: true,
         processing: true,
         lengthMenu: [ [25, 50, 100, 500, -1 ], [25, 50, 100, 500, "Mostrar Todo"] ],
         processing: true,
@@ -326,7 +315,7 @@ $('#create_empresa').click(function(){
     var id = $(this).attr('id');
     $('#form_result').html('');
     $.ajax({
-        url:"http://127.0.0.1:8000/admin/empresa/"+id+"/editar",
+        url:"empresa/"+id+"/editar",
         dataType: "json",
         success:function(data){
           $('#nombre').val(data.result.nombre);

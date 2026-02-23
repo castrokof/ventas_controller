@@ -7,10 +7,22 @@
 <link href="{{asset("assets/$theme/plugins/datatables-bs4/css/dataTables.bootstrap4.css")}}" rel="stylesheet" type="text/css"/>
 
 <style>
-/* .dt-button {
-  padding: 2px;
-  border: true;
-} */
+  .loader { 
+   
+  visibility: hidden; 
+  background-color: rgba(255, 253, 253, 0.952); 
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 40%;
+  top: 0;
+  margin: auto; /* Centramos vertical y horizontalmente */
+  z-index: +100 !important;
+  width: 10%;  
+  height:10%;
+ }
+    .loader img { position: relative; top:0%; left:0%;
+      width: 100px; height: 100px; }
 </style>
 @endsection
 
@@ -129,6 +141,7 @@
        
     <div class="row">
         <div class="col-lg-12">
+          <div class="loader col-lg-12"><img src="{{asset("assets/$theme/dist/img/loader6.gif")}}" class="" /> </div>
           @include('includes.form-error')
           @include('includes.form-mensaje')
            <div class="card card-danger">
@@ -232,31 +245,35 @@ function monto(){
   
   if( $('#tipo_pago').val() == "Diario"){
 
-    $('#monto_total').val(parseFloat($("#monto").val()) +
-     parseFloat((($("#monto").val() * $("#interes").val()) * ($("#cuotas").val()/30))));
-
+    $('#monto_total').val(Math.round(parseFloat($("#monto").val()) +
+     parseFloat((($("#monto").val() *  ($("#interes").val()/100)) * ($("#cuotas").val()/$("#cuotas").val())))));
+     $('#monto_pendiente').val($("#monto_total").val());
      $('#valor_cuota').val(Math.round( $('#monto_total').val()/$("#cuotas").val()));
 
     }else if( $('#tipo_pago').val() == "Mensual"){
 
       $('#monto_total').val(parseFloat($("#monto").val()) +
-      parseFloat((($("#monto").val() * $("#interes").val()) * $("#cuotas").val())));
+      parseFloat((($("#monto").val() *  ($("#interes").val()/100)) * $("#cuotas").val())));
+      $('#monto_pendiente').val($("#monto_total").val());
 
       $('#valor_cuota').val(Math.round( $('#monto_total').val()/$("#cuotas").val()));
 
 
     }else if( $('#tipo_pago').val() == "Quincenal"){
 
-    $('#monto_total').val(parseFloat($("#monto").val()) +
-    parseFloat((($("#monto").val() * $("#interes").val()) * ($("#cuotas").val()/2))));
+    $('#monto_total').val(Math.round(parseFloat($("#monto").val()) +
+    parseFloat((($("#monto").val() *  ($("#interes").val()/100)) * ($("#cuotas").val()/$("#cuotas").val())))));
+    
+    $('#monto_pendiente').val($("#monto_total").val());
 
     $('#valor_cuota').val(Math.round( $('#monto_total').val()/$("#cuotas").val()));
 
 
     }else if( $('#tipo_pago').val() == "Semanal"){
 
-    $('#monto_total').val(parseFloat($("#monto").val()) +
-    parseFloat((($("#monto").val() * $("#interes").val()) * ($("#cuotas").val()/4))));
+    $('#monto_total').val(Math.round(parseFloat($("#monto").val()) +
+    parseFloat((($("#monto").val() * ($("#interes").val()/100)) * ($("#cuotas").val()/$("#cuotas").val())))));
+    $('#monto_pendiente').val($("#monto_total").val());
 
     $('#valor_cuota').val(Math.round( $('#monto_total').val()/$("#cuotas").val()));
 
@@ -346,7 +363,7 @@ $("#interes").change(cuota);
           {data:'activo',
           name:'activo'
           },
-          {data:'observacion',
+          {data:'observacion_cli',
           name:'observacion'
           },
           {data:'usuario_id',
@@ -415,23 +432,25 @@ $('#create_cliente').click(function(){
     event.preventDefault(); 
     var url = '';
     var method = '';
-    
+    var text = '';
 
   if($('#action').val() == 'Add')
   {
+    text = "Estás por crear un cliente"
     url = "{{route('guardar_cliente')}}";
     method = 'post';
   }  
 
   if($('#action').val() == 'Edit')
   {
+    text = "Estás por actualizar un cliente"
     var updateid = $('#hidden_id').val();
-    url = "/cliente/"+updateid;
+    url = "cliente/"+updateid;
     method = 'put';
   }  
     Swal.fire({
      title: "¿Estás seguro?",
-     text: "Estás por crear un cliente",
+     text: text,
      icon: "success", 
      showCancelButton: true,
      showCloseButton: true,
@@ -461,13 +480,31 @@ $('#create_cliente').click(function(){
                       $('#form-general')[0].reset();
                       $('#modal-u').modal('hide');
                       $('#cliente').DataTable().ajax.reload();
-                      Manteliviano.notificaciones('cliente creado correctamente', 'Sistema Ventas', 'success');
+                      Swal.fire(
+                        {
+                          icon: 'success',
+                          title: 'cliente creado correctamente',
+                          showConfirmButton: false,
+                          timer: 1500
+                          
+                        }
+                      )
+                      // Manteliviano.notificaciones('cliente creado correctamente', 'Sistema Ventas', 'success');
                       
                     }else if(data.success == 'ok1'){
                       $('#form-general')[0].reset();
                       $('#modal-u').modal('hide');
                       $('#cliente').DataTable().ajax.reload();
-                      Manteliviano.notificaciones('cliente actualizado correctamente', 'Sistema Ventas', 'success');
+                      Swal.fire(
+                        {
+                          icon: 'warning',
+                          title: 'cliente actualizado correctamente',
+                          showConfirmButton: false,
+                          timer: 1500
+                          
+                        }
+                      )
+                      // Manteliviano.notificaciones('cliente actualizado correctamente', 'Sistema Ventas', 'success');
 
                     } 
                     $('#form_result').html(html)  
@@ -490,7 +527,7 @@ $('#create_cliente').click(function(){
     var id = $(this).attr('id');
     
   $.ajax({
-    url:"http://127.0.0.1:8000/cliente/"+id+"/editar",
+    url:"cliente/"+id+"/editar",
     dataType:"json",
     success:function(data){
       $('#nombres').val(data.result.nombres);
@@ -506,7 +543,7 @@ $('#create_cliente').click(function(){
       $('#celular').val(data.result.celular);
       $('#telefono').val(data.result.telefono);
       $('#consecutivo').val(data.result.consecutivo);
-      $('#observacion').val(data.result.observacion);
+      $('#observacion').val(data.result.observacion_cli);
       $('#usuario_id').val(data.result.usuario_id);
       $('#activo').val(data.result.activo);
       $('#hidden_id').val(id);
@@ -557,7 +594,9 @@ $(document).on('click', '.prestamo', function(){
      confirmButtonText: 'Aceptar',
      }).then((result)=>{
     if(result.value){
-    $.ajax({  
+    $.ajax({
+          beforeSend: function(){ 
+          $('.loader').css("visibility", "visible"); },  
            url:urlp,
            method:methodp,
            data:$(this).serialize(),
@@ -567,10 +606,22 @@ $(document).on('click', '.prestamo', function(){
                       $('#form-generalp')[0].reset();
                       $('#modal-p').modal('hide');
                       $('#cliente').DataTable().ajax.reload();
-                      Manteliviano.notificaciones('prestamo agregado correctamente', 'Sistema Ventas', 'success');
+                      Swal.fire(
+                        {
+                          icon: 'success',
+                          title: 'prestamo agregado correctamente',
+                          showConfirmButton: false,
+                          timer: 1500
+                          
+                        }
+                      )
+                      // Manteliviano.notificaciones('prestamo agregado correctamente', 'Sistema Ventas', 'success');
                       
                                     }
-                                 }
+          },
+          complete: function(){ 
+          $('.loader').css("visibility", "hidden");
+          }
 
             });
                     }
@@ -589,7 +640,7 @@ $(document).on('click', '.detalle', function(){
     $("#detalleCuota").empty();
     $("#detalles").empty();
     $.ajax({
-    url:"http://127.0.0.1:8000/prestamo/"+id+"",
+    url:"prestamo/"+id+"",
     dataType:"json",
     success:function(data){
       $.each(data.result, function(i, item){
@@ -639,11 +690,11 @@ $(document).on('click', '.detalle', function(){
               '<span class="info-box-text">Monto Total</span>'+
               '<span class="info-box-number-montototal">'+item.monto_total+'</span>'+
     '<div class="progress"><div class="progress-bar" style="width: 100%"></div></div></div><!-- /.info-box-content --></div><!-- /.info-box --></div><!-- /.col -->'+
-    
-    '<div class="col-md-3 col-sm-6 col-12"><div class="info-box bg-warning"><span class="info-box-icon"><i class="far fa-calendar-alt"></i></span><div class="info-box-content">'+
-              '<span class="info-box-text">Fecha de inicio</span>'+
-              '<span class="info-box-date">'+item.fecha_inicial+'</span>'+
+    '<div class="col-md-3 col-sm-6 col-12"><div class="info-box bg-warning"><span class="info-box-icon"><i class="fas fa-money-check-alt"></i></span><div class="info-box-content">'+
+              '<span class="info-box-text">Saldo</span>'+
+              '<span class="info-box-number-saldo">'+item.monto_pendiente+'</span>'+
     '<div class="progress"><div class="progress-bar" style="width: 100%"></div></div></div><!-- /.info-box-content --></div><!-- /.info-box --></div><!-- /.col -->'+
+    
     '</div>'
     
 

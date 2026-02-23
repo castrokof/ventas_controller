@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use Doctrine\DBAL\Schema\Table;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class DetallePrestamoController extends Controller
 {
@@ -66,9 +68,19 @@ class DetallePrestamoController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function update(Request $request, $id)
+    public function update(Request $request)
     {
-        //
+        if($request->ajax()){
+     
+        DB::table('detalle_prestamo')
+        ->where([['d_numero_cuota', '=', $request->numero_cuota],['prestamo_id', '=', $request->prestamo_id]])
+        ->update([
+        'fecha_cuota'=> $request->new_date_fecha,
+        'updated_at'=> now()
+        ]);
+        }
+
+        return response()->json(['success' => 'okdate']);
     }
 
     /**

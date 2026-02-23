@@ -20,12 +20,12 @@ class CreatePagoTable extends Migration
             $table->decimal('valor_abono',15,2);
             $table->integer('numero_cuota');
             $table->date('fecha_pago');
-            $table->string('observacion',100)->nullable();
+            $table->string('observacion_pago',100)->nullable();
             $table->char('sync',1);
             $table->unsignedBigInteger('prestamo_id');
             $table->unsignedBigInteger('usuario_id');
             $table->foreign('usuario_id', 'fk_pagoid_usuarioid')->references('id')->on('usuario')->onDelete('restrict')->onUpdate('restrict');
-            $table->foreign('prestamo_id', 'fk_pagoid_prestamoid')->references('id')->on('prestamo')->onDelete('restrict')->onUpdate('restrict');
+            $table->foreign('prestamo_id', 'fk_pagoid_prestamoid')->references('idp')->on('prestamo')->onDelete('restrict')->onUpdate('restrict');
             $table->dateTime('delete_at')->nullable();
             $table->timestamps();
         });

@@ -44,7 +44,7 @@ $id= Session()->get('usuario_id');
                   <span class="float-right text-sm text-danger"><i></i></span>
                   Hola, {{$iduser ?? ''}}
                 </h3>
-              
+               
                 <i><a href="#" data-toggle="modal" data-target="#modal-xl" class="btn btn-block bg-gradient-info btn-xs btn-flat" >Cambiar Contraseña</a></i>
                
                 <td><i><a href="{{route('logout')}}" class="btn btn-block bg-gradient-warning btn-xs btn-flat">Cerrar sesión</a></i></td>

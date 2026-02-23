@@ -178,18 +178,18 @@ class UsuarioAdministradorSeeder extends Seeder
         ]);
         DB::table('menu')->insert([
 
-            'menu_id'=> 0, 
+            'menu_id'=> 15, 
             'nombre'=>'Cliente',
             'url'=>'cliente',
-            'orden'=>5, 
+            'orden'=>1, 
             'icono'=>'fas fa-handshake'
         ]);
         DB::table('menu')->insert([
 
-            'menu_id'=> 0, 
+            'menu_id'=> 15, 
             'nombre'=>'Prestamos',
             'url'=>'prestamo',
-            'orden'=>6, 
+            'orden'=>3, 
             'icono'=>'fas fa-money-bill-alt'
         ]);
         DB::table('menu')->insert([
@@ -200,7 +200,30 @@ class UsuarioAdministradorSeeder extends Seeder
             'orden'=>2, 
             'icono'=>'fas fa-tachometer-alt'
         ]);
-        
+        DB::table('menu')->insert([
+
+            'menu_id'=> 15, 
+            'nombre'=>'Ordenar ruta',
+            'url'=>'cliente/ruta',
+            'orden'=>2, 
+            'icono'=>'fas fa-route'
+        ]);
+        DB::table('menu')->insert([
+
+            'menu_id'=> 0, 
+            'nombre'=>'Admin-Clientes',
+            'url'=>'#',
+            'orden'=>5, 
+            'icono'=>'fa fa-cog fa-spin fa-3x fa-fw'
+        ]);
+        DB::table('menu')->insert([
+
+            'menu_id'=> 15, 
+            'nombre'=>'Ruta de cobro',
+            'url'=>'pago',
+            'orden'=>4, 
+            'icono'=>'fas fa-cash-register'
+        ]);
 
         //Relación menu-rol
 
@@ -244,21 +267,13 @@ class UsuarioAdministradorSeeder extends Seeder
             'rol_id'=> 1, 
             'menu_id'=> 8
         ]);
-        DB::table('menu_rol')->insert([
-
-            'rol_id'=> 1, 
-            'menu_id'=> 9
-        ]);
+        
         DB::table('menu_rol')->insert([
 
             'rol_id'=> 1, 
             'menu_id'=> 10
         ]);
-        DB::table('menu_rol')->insert([
-
-            'rol_id'=> 2, 
-            'menu_id'=> 9
-        ]);
+       
         DB::table('menu_rol')->insert([
 
             'rol_id'=> 2, 
@@ -274,11 +289,7 @@ class UsuarioAdministradorSeeder extends Seeder
             'rol_id'=> 2, 
             'menu_id'=> 10
         ]);
-        DB::table('menu_rol')->insert([
-
-            'rol_id'=> 3, 
-            'menu_id'=> 10
-        ]);
+       
         DB::table('menu_rol')->insert([
 
             'rol_id'=> 1, 
@@ -304,7 +315,46 @@ class UsuarioAdministradorSeeder extends Seeder
             'rol_id'=> 2, 
             'menu_id'=> 12
         ]);
-        
+        DB::table('menu_rol')->insert([
+
+            'rol_id'=> 1, 
+            'menu_id'=> 13
+        ]);
+        DB::table('menu_rol')->insert([
+
+            'rol_id'=> 1, 
+            'menu_id'=> 14
+        ]);
+        DB::table('menu_rol')->insert([
+
+            'rol_id'=> 1, 
+            'menu_id'=> 15
+        ]);
+        DB::table('menu_rol')->insert([
+
+            'rol_id'=> 1, 
+            'menu_id'=> 16
+        ]);
+        DB::table('menu_rol')->insert([
+
+            'rol_id'=> 2, 
+            'menu_id'=> 15
+        ]);
+        DB::table('menu_rol')->insert([
+
+            'rol_id'=> 2, 
+            'menu_id'=> 14
+        ]);
+        DB::table('menu_rol')->insert([
+
+            'rol_id'=> 2, 
+            'menu_id'=> 16
+        ]);
+        DB::table('menu_rol')->insert([
+
+            'rol_id'=> 3, 
+            'menu_id'=> 15
+        ]);
         
     }
 }

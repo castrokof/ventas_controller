@@ -1,12 +1,12 @@
  <!-- Main Sidebar Container -->
   <aside class="main-sidebar  sidebar-light-info elevation-4 ">
     <!-- Brand Logo -->
-    <a href="#" class="brand-link">
-      <img src="{{asset("assets/$theme/dist/img/AdminLTELogo copy.gif")}}"
+    <a href="#" class="brand-link"><i class="fab fa-cc-amazon-pay fa-w-18 fa-2x"></i> 
+      <!--<img src="{{asset("assets/$theme/dist/img/logo_gota.gif")}}"
            alt="Sinteco"
-           class="brand-image img-circle elevation-2"
-           style="opacity: .8">
-      <span class="brand-text font-weight-light">Admin-VENTAS</span>
+           class="brand-image img-circle elevation-5"
+           style="opacity: .8">-->
+      <span class="brand-text font-weight-light">Coll-System</span>
     </a>  
 
     <!-- Sidebar -->
@@ -14,7 +14,7 @@
       <!-- Sidebar user (optional) -->
       <div class="user-panel mt-3 pb-3 mb-3 d-flex">
         <div class="image">
-          <img src="{{asset("assets/$theme/dist/img/user_default.jpg  ")}}" class="img-circle elevation-2" alt="User Image">
+          <img src="{{asset("assets/$theme/dist/img/user_default.jpg  ")}}" class="img-circle elevation-5" alt="User Image">
         </div>
         <div class="info">
           <a href="#" class="d-block">{{Session()->get('usuario') ?? ''}}</a>

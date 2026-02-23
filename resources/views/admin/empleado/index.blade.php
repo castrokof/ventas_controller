@@ -9,7 +9,8 @@
 
 
 @section('scripts')
-<script src="{{asset("assets/pages/scripts/admin/empleado/crear.js")}}" type="text/javascript"></script>    
+<!--<script src="{{asset("assets/pages/scripts/admin/empleado/crear.js")}}" type="text/javascript"></script> -->
+
 @endsection
 
 @section('contenido')
@@ -109,6 +110,83 @@
 
 
 
+<!-- /.Modal detalle prestamo -->
+
+  
+<div class="modal fade" tabindex="-1" id ="modal-cliente"  role="dialog" aria-labelledby="myLargeModalLabel">
+  <div class="modal-dialog modal-xl" role="document">
+  <div class="modal-content">
+
+
+  <!-- Default box -->
+  <div class="card card-success" style="transition: all 0.15s ease 0s; height: inherit; width: inherit;">
+    <div class="card-header">
+      <h3 class="card-title-cli"></h3>
+
+      <div class="card-tools">
+        <button type="button" class="btn btn-tool" data-card-widget="maximize">
+          <i class="fas fa-expand"></i>
+        </button>
+        <button type="button" class="btn btn-tool" data-card-widget="collapse">
+          <i class="fas fa-minus"></i>
+        </button>
+        
+          <button type="button" class="btn btn-tool" data-dismiss="modal">
+            <i class="fas fa-times"></i>
+          </button>
+        
+       
+      </div>
+      <!-- /.card-tools -->
+    </div>
+    <!-- /.card-header -->
+   
+  <div class="card-body table-responsive p-2">
+        
+    <table id="cliente" class="table table-hover  text-nowrap">
+      {{-- <table id="cliente" class="table table-striped table-bordered"> --}}
+      <thead>
+      <tr>  
+           
+            <th>Consecutivo</th>
+            <th>Nombres</th>
+            <th>Apellidos</th>
+            <th>Tipo de documento</th>
+            <th>Documento</th>
+            <th>Telefono</th>
+            <th>Celular</th>
+            <th>Dirección</th>
+            <th>Estado</th>
+            <th>Pais</th>
+            <th>Ciudad</th>
+            <th>Barrio</th>
+            <th>Sector</th>
+            <th>Activo</th>
+            <th>Observación</th>
+            <th>Usuario_id</th>
+            
+                         
+      </tr>
+      </thead>
+      <tbody>
+         
+      </tbody>
+    </table>
+  </div>
+      <!-- /.class-table-responsive -->
+  </div>
+  <!-- /.card -->
+
+  </div>
+  </div>
+</div>
+   
+
+
+
+
+
+
 @endsection
 
 
@@ -129,6 +207,182 @@
 <script>
  
  $(document).ready(function(){
+     
+      
+    $("#form-general").validate({
+                errorElement: 'span',
+                errorClass: 'help-block help-block-error',
+                focusInvalid: false,
+                ignore: "",
+                highlight: function(element, errorClass, validClass){
+                    $(element).closest('.form-control').addClass('is-invalid');
+                },
+                unhighlight: function(element){
+                    $(element).closest('.form-control').removeClass('is-invalid');
+                },
+                success: function(label){
+                    label.closest('.form-control').removeClass('is-invalid');
+                },
+                errorPlacement: function(error, element){
+                    if($(element).is('select') && element.hasClass('bs-select')){
+                        error.insertAfter(element);
+                    }else if($(element).is('select') && element.hasClass('select2-hidden-accessible')){
+                        element.next().after(error);
+                    }else if(element.attr("data-error-container")){
+                        error.appendTo(element.attr("data-error-container"));
+                    }else{
+                        error.insertAfter(element);
+                    }
+                },
+                invalidHandler: function(event, validator){
+
+                },
+                submitHandler: function(form){
+
+                    return true;
+
+                }
+            });
+      
+
+  fill_datatable();
+
+  function fill_datatable( id = '')
+  {
+      //---------------------------------------------------
+
+        //initiate dataTables plugin
+        var datatable1 = 
+        $('#cliente')
+        //.wrap("<div class='dataTables_borderWrap' />")   //if you are applying horizontal scrolling (sScrollX)
+        .DataTable({
+        language: idioma_espanol,
+        processing: true,
+        lengthMenu: [ [25, 50, 100, 500, -1 ], [25, 50, 100, 500, "Mostrar Todo"] ],
+        processing: true,
+        serverSide: true,
+        aaSorting: [[ 0, "asc" ]],
+        ajax:{
+          url:"{{ route('clientecli')}}",
+          type:"get",
+          data: {id:id}, 
+              },
+        columns: [
+          
+          {data:'consecutivo',
+          name:'consecutivo'
+          },
+          {data:'nombres',
+          name:'nombres'}
+          ,
+          {data:'apellidos',
+          name:'apellidos'
+          },
+          {data:'tipo_documento',
+          name:'tipo_documento'
+          },
+          {data:'documento',
+          name:'documento'
+          },
+          {data:'telefono',
+          name:'telefono'
+          },
+          {data:'celular',
+          name:'celular'
+          },
+          {data:'direccion',
+          name:'direccion'
+          },
+          {data:'estado',
+          name:'estado'
+          },
+          {data:'pais',
+          name:'pais'
+          },
+          {data:'ciudad',
+          name:'ciudad'
+          },
+          {data:'barrio',
+          name:'barrio'
+          },
+          {data:'sector',
+          name:'sector'
+          },
+         
+          {data:'activo',
+          name:'activo'
+          },
+          {data:'observacion_cli',
+          name:'observacion'
+          },
+          {data:'usuario_id',
+          name:'usuario_id'
+          },
+                   
+        ],
+
+         //Botones----------------------------------------------------------------------
+         
+         "dom":'<"row"<"col-xs-1 form-inline"><"col-md-4 form-inline"l><"col-md-5 form-inline"f><"col-md-3 form-inline"B>>rt<"row"<"col-md-8 form-inline"i> <"col-md-4 form-inline"p>>',
+         
+
+                   buttons: [
+                      {
+    
+                   extend:'copyHtml5',
+                   titleAttr: 'Copiar Registros',
+                   title:"seguimiento",
+                   className: "btn  btn-outline-primary btn-sm"
+    
+    
+                      },
+                      {
+    
+                   extend:'excelHtml5',
+                   titleAttr: 'Exportar Excel',
+                   title:"seguimiento",
+                   className: "btn  btn-outline-success btn-sm"
+    
+    
+                      },
+                       {
+    
+                   extend:'csvHtml5',
+                   titleAttr: 'Exportar csv',
+                   className: "btn  btn-outline-warning btn-sm"
+                   //text: '<i class="fas fa-file-excel"></i>'
+                   
+                      },
+                      {
+    
+                   extend:'pdfHtml5',
+                   titleAttr: 'Exportar pdf',
+                   className: "btn  btn-outline-secondary btn-sm"
+    
+    
+                      }
+                   ],
+
+
+        
+    
+        });
+
+      }
+$(document).on('click', '.clientes', function(){
+  
+  var id = $(this).attr('id');
+ 
+  if(id != '' ){
+    
+       $('#cliente').DataTable().destroy();
+       fill_datatable(id);
+       $('.card-title-cli').text('Clientes');
+       $('#modal-cliente').modal('show');  
+    }
+  });
+
+     
         //initiate dataTables plugin
       var datatable = 
         $('#empleado')
@@ -144,7 +398,7 @@
               },
         columns: [
           {data:'editar'},
-          {data:'id'},
+          {data:'ide'},
           {data:'nombres'},
           {data:'apellidos'},
           {data:'tipo_documento'},
@@ -155,7 +409,7 @@
           {data:'direccion'},
           {data:'celular'},
           {data:'telefono'},
-          {data:'empresa_id'}, 
+          {data:'nombre'}, 
           {data:'activo'},
           
         ],
@@ -207,6 +461,7 @@
         });
 
 $('#create_empleado').click(function(){
+  $('#form-general')[0].reset();
   $('.modal-title').text('Agregar Nuevo Empleado');
   $('#action_button').val('Add');
   $('#action').val('Add');
@@ -228,10 +483,24 @@ $('#create_empleado').click(function(){
   if($('#action').val() == 'Edit')
   {
     var updateid = $('#hidden_id').val();
-    url = "/empleado/"+updateid;
+    url = "empleado/"+updateid;
     method = 'put';
     text = "Estás por actualizar un empleado";
-  }  
+  }
+  
+  if($('#nombres').val() == '' || $('#apellidos').val() == '' || $('#tipo_documento').val() == '' || $('#documento').val() == '' || $('#pais').val() == '' || $('#ciudad').val() == '' || $('#barrio').val() == '' || $('#direccion').val() == '' || $('#ciudad').val() == '' || $('#celular').val() == '' || $('#telefono').val() == '' || $('#empresa_id').val() == '' || $('#activo').val() == ''){
+  
+        Swal.fire({
+              title: 'Los campos no pueden estar vacios',
+              icon: 'warning',
+              showCloseButton: true,
+              confirmButtonText: 'Aceptar',
+                }) 
+        
+     
+       }else{
+  
+  
     Swal.fire({
      title: "¿Estás seguro?",
      text: text,
@@ -282,16 +551,24 @@ $('#create_empleado').click(function(){
         });
           
 
-  });
+  }});
 
 
- // Edición de cliente
+//   $(document).on('click', '.clientes', function(){
+//     var id = $(this).attr('id');
+    
+//   $.ajax({
+//     url:"http://127.0.0.1:8000/cliente/"+id+"",
+//     dataType:"json"
+//   })
+// });
+ // Edición de empleado
 
  $(document).on('click', '.edit', function(){
     var id = $(this).attr('id');
     
   $.ajax({
-    url:"http://127.0.0.1:8000/empleado/"+id+"/editar",
+    url:"empleado/"+id+"/editar",
     dataType:"json",
     success:function(data){
       $('#nombres').val(data.result.nombres);

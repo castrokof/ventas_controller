@@ -20,7 +20,7 @@ class Empresa extends Model
             'empresa_id',   
             'empleado_id',   
             'id',
-            'id'
+            'ide'
            
         );
     }

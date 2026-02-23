@@ -27,32 +27,39 @@ class UsuarioController extends Controller
         $empleado_id = $request->session()->get('empleado_id');
 
         $empresaLogin = DB::table('empleado')->Join('empresa', 'empleado.empresa_id', '=', 'empresa.id')
-        ->where('empleado.id', '=', $empleado_id)->select('empleado.empresa_id')->get();
+        ->where('empleado.ide', '=', $empleado_id)->first();
+
+        
 
        if($request->session()->get('rol_id') == 1){
         
-        $Empleados = DB::table('empleado')->leftJoin('usuario', 'empleado.id', '=', 'usuario.empleado_id')
-        ->where('usuario.empleado_id', '=', null)->pluck('empleado.nombres','empleado.id')->toArray();
+        $Empleados = DB::table('empleado')->leftJoin('usuario', 'empleado.ide', '=', 'usuario.empleado_id')
+        ->where('usuario.empleado_id', '=', null)->pluck('empleado.nombres','empleado.ide')->toArray();
         $Rols1 = Rol::orderBy('id')->pluck('nombre', 'id')->toArray();
 
-        $datas = DB::table('usuario')->Join('empleado', 'usuario.empleado_id', '=', 'empleado.id')
+        $datas = DB::table('usuario')
+        ->Join('empleado', 'usuario.empleado_id', '=', 'empleado.ide')
         ->Join('usuario_rol', 'usuario.id', '=', 'usuario_rol.usuario_id')
         ->select('usuario.id', 'empleado.nombres',
         'usuario.usuario', 'usuario.tipo_de_usuario', 'usuario.email', 'empleado.empresa_id', 'usuario.activo', 'usuario_rol.rol_id')->get();
 
-       }else{
+       }else  if($request->session()->get('rol_id') == 2){
 
-        $Empleados = DB::table('empleado')->leftJoin('usuario', 'empleado.id', '=', 'usuario.empleado_id')
-        ->where('usuario.empleado_id', '=', null)->pluck('empleado.nombres','empleado.id')->toArray();
-        $Rols1 = Rol::orderBy('id')->where([['id', '!=', 1],['id', '!=', 2]])->pluck('nombre', 'id')->toArray();
+        $Empleados = DB::table('empleado')->leftJoin('usuario', 'empleado.ide', '=', 'usuario.empleado_id')
+        ->where([['usuario.empleado_id', '=', null], ['empleado.empresa_id', '=',$empresaLogin->empresa_id]])->pluck('empleado.nombres','empleado.ide')->toArray();
         
-        foreach($empresaLogin as $empresa){
-        $datas = DB::table('usuario')->Join('empleado', 'usuario.empleado_id', '=', 'empleado.id')
+        $Rols1 = Rol::orderBy('id')->where([['id', '!=', 1],['id', '!=', 2]])->pluck('nombre', 'id')->toArray();
+                
+        
+        $datas = DB::table('usuario')->Join('empleado', 'usuario.empleado_id', '=', 'empleado.ide')
         ->Join('usuario_rol', 'usuario.id', '=', 'usuario_rol.usuario_id')
-        ->where('empleado.empresa_id', '=',$empresa->empresa_id)->select('usuario.id', 'empleado.nombres',
+        //->where([['empleado.empresa_id', '=',$empresaLogin->empresa_id],['usuario_rol.id', '=', 3] ])->select('usuario.id', 'empleado.nombres',
+        ->where([['empleado.empresa_id', '=',$empresaLogin->empresa_id],['usuario_rol.rol_id', '=', 3] ])->select('usuario.id', 'empleado.nombres',
         'usuario.usuario', 'usuario.tipo_de_usuario', 'usuario.email', 'empleado.empresa_id', 'usuario.activo', 'usuario_rol.rol_id')->get();
-            }
+        
         }
+        
+        
          return view('admin.usuario.index', compact('datas','Rols1','Empleados'));
     }
 
@@ -97,14 +104,14 @@ class UsuarioController extends Controller
     {   
         if($request->session()->get('rol_id') == 1)
         {   
-            $Empleados = DB::table('empleado')->leftJoin('usuario', 'empleado.id', '=', 'usuario.empleado_id')
-            ->pluck('empleado.nombres','empleado.id')->toArray();
+            $Empleados = DB::table('empleado')->leftJoin('usuario', 'empleado.ide', '=', 'usuario.empleado_id')
+            ->pluck('empleado.nombres','empleado.ide')->toArray();
             $Rols1 = Rol::orderBy('id')->pluck('nombre', 'id')->toArray();
             $data = Usuario::with('roles1')->findOrFail($id);
 
         }else{   
-            $Empleados = DB::table('empleado')->leftJoin('usuario', 'empleado.id', '=', 'usuario.empleado_id')
-            ->pluck('empleado.nombres','empleado.id')->toArray();
+            $Empleados = DB::table('empleado')->leftJoin('usuario', 'empleado.ide', '=', 'usuario.empleado_id')
+            ->pluck('empleado.nombres','empleado.ide')->toArray();
             $Rols1 = Rol::orderBy('id')->where([['id', '!=', 1],['id', '!=', 2]])->pluck('nombre', 'id')->toArray();
             $data = Usuario::with('roles1')->findOrFail($id);
         }

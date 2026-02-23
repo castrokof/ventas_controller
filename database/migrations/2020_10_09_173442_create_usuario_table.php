@@ -22,7 +22,7 @@ class CreateUsuarioTable extends Migration
             $table->string('email',100)->unique();
             $table->char('activo',1);
             $table->unsignedBigInteger('empleado_id');
-            $table->foreign('empleado_id', 'fk_empleadoid_usuarioid')->references('id')->on('empleado')->onDelete('restrict')->onUpdate('restrict');
+            $table->foreign('empleado_id', 'fk_empleadoid_usuarioid')->references('ide')->on('empleado')->onDelete('restrict')->onUpdate('restrict');
             $table->dateTime('delete_at')->nullable();
             $table->timestamps();
         });

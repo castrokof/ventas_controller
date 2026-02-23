@@ -1,7 +1,7 @@
 @extends("theme.$theme.layout")
 
 @section('titulo')
-    Cliente
+    Prestamo
 @endsection
 @section("styles")
 <link href="{{asset("assets/$theme/plugins/datatables-bs4/css/dataTables.bootstrap4.css")}}" rel="stylesheet" type="text/css"/>
@@ -9,10 +9,17 @@
 <link href="{{asset("assets/css/select2.min.css")}}" rel="stylesheet" type="text/css"/>
 
 <style>
-/* .dt-button {
-  padding: 2px;
-  border: true;
-} */
+  .loader { 
+   
+  visibility: hidden; 
+  background-color: rgba(255, 253, 253, 0.952); 
+  position: absolute;
+  z-index: +100 !important;
+  width: 100%;  
+  height:100%;
+ }
+    .loader img { position: relative; top:50%; left:40%;
+      width: 180px; height: 180px; }
 </style>
 @endsection
 
@@ -23,7 +30,7 @@
 
 @section('contenido')
 <div class="row">
-    <div class="col-lg-12">
+      <div class="col-lg-12">
         @include('includes.form-error')
         @include('includes.form-mensaje')
      <br>   
@@ -43,23 +50,25 @@
         <tr>  
               <th>Acciones</th>
               <th>Consecutivo</th>
+              <th>Id_prestamo</th>
               <th>Nombres</th>
               <th>Apellidos</th>
               <th>Monto</th>
-              <th>Monto Pendiente</th>
+              <th>Monto Total</th>
+              <th>Saldo</th>
+              <th>Saldo atrasado</th>
+              <th>Cuotas atrasadas</th>
               <th>Tipo de Pago</th>
               <th>Cuotas</th>
               <th>Cuotas Pendientes</th>
               <th>Interes</th>
-              <th>Monto Total </th>
               <th>Valor Cuotas</th>
               <th>Fecha Inicial </th>
-              <th>fecha Final</th>
-              <th>Observación</th>
+              <!--<th>Observación</th>
               <th>Estado</th>
               <th>Usuario</th>
               <th>Cliente</th>
-              <th>Fecha de Prestamo</th>
+              <th>Fecha de Prestamo</th>-->
               
                            
         </tr>
@@ -89,11 +98,12 @@
      
   <div class="row">
       <div class="col-lg-12">
+        <div class="loader col-lg-12"><img src="{{asset("assets/$theme/dist/img/loader6.gif")}}" class="" /> </div>
         @include('includes.form-error')
         @include('includes.form-mensaje')
          <div class="card card-danger">
           <div class="card-header">
-               <h6 class="modal-title-pc"></h6>
+              <h6 class="modal-title-pc"></h6>
             <div class="card-tools pull-right">
               <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
               </div>
@@ -148,7 +158,7 @@
   <!--tabla -->
       <div  class="card-body table-responsive p-2">
         
-      <table id="detalleCuota" class="table table-hover  text-nowrap  table-striped table-bordered"  style="width:100%">  
+      <table id="detalleCuota" class="table table-hover  table-striped table-bordered"  style="width:100%">  
             
       </table>
       </div>
@@ -160,6 +170,39 @@
   </div>
 </div>
 
+<!-- /.Modal detalle pago -->
+<div class="modal fade" tabindex="-1" id ="modal-p"  role="dialog" aria-labelledby="myLargeModalLabel">
+  <div class="modal-dialog modal-xl" role="document">
+  <div class="modal-content">
+
+
+  <!-- Default box -->
+  <div class="card">
+    <div class="card-header">
+      <h6 class="modal-title-p"></h6>
+      <div class="card-tools pull-right">
+          <button type="button" class="btn btn-block bg-gradient-primary btn-sm" data-dismiss="modal">Close</button>
+        </div>
+    </div>
+    {{-- <div class="card-body"  id="detalles" style="display: block;">
+      
+  
+  </div> --}}
+  <!-- /.card body -->
+  <!--tabla -->
+      <div  class="card-body table-responsive p-2">
+        
+      <table id="detallePago" class="table table-hover  table-striped table-bordered"  style="width:100%">  
+            
+      </table>
+      </div>
+      <!-- /.class-table-responsive -->
+  </div>
+  <!-- /.card -->
+
+  </div>
+  </div>
+</div>
   
 
 
@@ -200,31 +243,35 @@ function monto(){
   
   if( $('#tipo_pago').val() == "Diario"){
 
-    $('#monto_total').val(parseFloat($("#monto").val()) +
-     parseFloat((($("#monto").val() * $("#interes").val()) * ($("#cuotas").val()/30))));
-
+    $('#monto_total').val(Math.round(parseFloat($("#monto").val()) +
+     parseFloat((($("#monto").val() * ($("#interes").val()/100)) * ($("#cuotas").val()/$("#cuotas").val())))));
+     $('#monto_pendiente').val($("#monto_total").val());
      $('#valor_cuota').val(Math.round( $('#monto_total').val()/$("#cuotas").val()));
 
     }else if( $('#tipo_pago').val() == "Mensual"){
 
       $('#monto_total').val(parseFloat($("#monto").val()) +
-      parseFloat((($("#monto").val() * $("#interes").val()) * $("#cuotas").val())));
+      parseFloat((($("#monto").val() * ($("#interes").val()/100)) * $("#cuotas").val())));
+      $('#monto_pendiente').val($("#monto_total").val());
 
       $('#valor_cuota').val(Math.round( $('#monto_total').val()/$("#cuotas").val()));
 
 
     }else if( $('#tipo_pago').val() == "Quincenal"){
 
-    $('#monto_total').val(parseFloat($("#monto").val()) +
-    parseFloat((($("#monto").val() * $("#interes").val()) * ($("#cuotas").val()/2))));
+    $('#monto_total').val(Math.round(parseFloat($("#monto").val()) +
+    parseFloat((($("#monto").val() * ($("#interes").val()/100)) * ($("#cuotas").val()/$("#cuotas").val())))));
+    
+    $('#monto_pendiente').val($("#monto_total").val());
 
     $('#valor_cuota').val(Math.round( $('#monto_total').val()/$("#cuotas").val()));
 
 
     }else if( $('#tipo_pago').val() == "Semanal"){
 
-    $('#monto_total').val(parseFloat($("#monto").val()) +
-    parseFloat((($("#monto").val() * $("#interes").val()) * ($("#cuotas").val()/4))));
+    $('#monto_total').val(Math.round(parseFloat($("#monto").val()) +
+    parseFloat((($("#monto").val() * ($("#interes").val()/100)) * ($("#cuotas").val()/$("#cuotas").val())))));
+    $('#monto_pendiente').val($("#monto_total").val());
 
     $('#valor_cuota').val(Math.round( $('#monto_total').val()/$("#cuotas").val()));
 
@@ -256,12 +303,18 @@ $("#interes").change(cuota);
         $('#prestamo')
         //.wrap("<div class='dataTables_borderWrap' />")   //if you are applying horizontal scrolling (sScrollX)
         .DataTable({
+          // rowCallback: function(row, data, index){
+  	      // if(data[7]<1){
+    	    // $(row).find('td:eq(7)').css('color', 'blue');
+          //               }
+          // },  
         language: idioma_espanol,
         processing: true,
         lengthMenu: [ [25, 50, 100, 500, -1 ], [25, 50, 100, 500, "Mostrar Todo"] ],
         processing: true,
         serverSide: true,
         aaSorting: [[ 1, "asc" ]],
+        
         ajax:{
           url:"{{ route('prestamo')}}",
               },
@@ -273,6 +326,9 @@ $("#interes").change(cuota);
           {data:'consecutivo',
           name:'consecutivo'
           },
+          {data:'idp',
+          name:'idp'
+          },
           {data:'nombres',
           name:'nombres'
           },
@@ -280,10 +336,19 @@ $("#interes").change(cuota);
           name:'apellidos'
           },
           {data:'monto',
-          name:'monto'}
-          ,
+          name:'monto'
+          },
+          {data:'monto_total',
+          name:'monto_total'
+          },
           {data:'monto_pendiente',
            name:'monto_pendiente'
+          },
+          {data:'monto_atrasado',
+           name:'monto_atrasado'
+          },
+          {data:'cuotas_atrasadas',
+          name:'cuotas_atrasadas'
           },
           {data:'tipo_pago',
           name:'tipo_pago'
@@ -297,20 +362,16 @@ $("#interes").change(cuota);
           {data:'interes',
           name:'interes'
           },
-          {data:'monto_total',
-          name:'monto_total'
-          },
+          
           {data:'valor_cuota',
           name:'valor_cuota'
           },
           {data:'fecha_inicial',
           name:'fecha_inicial'
-          },
-          {data:'fecha_final',
-          name:'fecha_final'
-          },
-          {data:'observacion',
-          name:'observacion'
+          }/*,
+         
+          {data:'observacion_prestamo',
+          name:'observacion_prestamo'
           },
           {data:'activo',
           name:'activo'
@@ -324,7 +385,7 @@ $("#interes").change(cuota);
           },
           {data:'created_at',
           name:'created_at'
-          },
+          },*/
                    
         ],
 
@@ -369,6 +430,17 @@ $("#interes").change(cuota);
     
                       }
                    ],
+                   
+                   "createdRow": function(row, data, dataIndex) { 
+                    if (data["monto_atrasado"] > 0) { 
+                    $(row).css("background-color", "#d66745"); 
+                    $(row).addClass("warning"); 
+                    }else if(data["monto_pendiente"] == 0){
+                    $(row).css("background-color", "#80c261"); 
+                    $(row).addClass("warning"); 
+
+                    }
+                  }
 
 
         
@@ -406,7 +478,9 @@ $("#interes").change(cuota);
      confirmButtonText: 'Aceptar',
      }).then((result)=>{
     if(result.value){
-    $.ajax({  
+    $.ajax({
+          beforeSend: function(){ 
+          $('.loader').css("visibility", "visible"); },
            url:urlp,
            method:methodp,
            data:$(this).serialize(),
@@ -416,12 +490,24 @@ $("#interes").change(cuota);
                       $('#form-general')[0].reset();
                       $('#modal-pc').modal('hide');
                       $('#prestamo').DataTable().ajax.reload();
-                      Manteliviano.notificaciones('prestamo agregado correctamente', 'Sistema Ventas', 'success');
+                      Swal.fire(
+                        {
+                          icon: 'success',
+                          title: 'prestamo agregado correctamente',
+                          showConfirmButton: false,
+                          timer: 1500
+                          
+                        }
+                      )
+                      // Manteliviano.notificaciones('prestamo agregado correctamente', 'Sistema Ventas', 'success');
                       
                     }
   
      
-     }
+          },
+          complete: function(){ 
+          $('.loader').css("visibility", "hidden");
+          }
 
             });
         }
@@ -439,24 +525,29 @@ $(document).on('click', '.detalle', function(){
   $("#detalleCuota").empty();
   
   $.ajax({
-  url:"http://127.0.0.1:8000/prestamo/"+id+"",
+  url:"prestamo/"+id+"",
   dataType:"json",
   success:function(dataCuotas){
+    $("#detalleCuota").append( 
+      '<thead><tr><th align="center" style="dislay: none;">Numero de cuota</th>'+
+              '<th align="center" style="dislay: none;">Valor cuota</th>'+
+              '<th align="center" style="dislay: none;">Fecha de Cuota</th>'+
+              '<th align="center" style="dislay: none;">Valor abonado</th>'+
+              '<th align="center" style="dislay: none;">estado</th>'+
+              '</tr></thead>'
+      );
     $.each(dataCuotas.result1, function(i, items){
     $("#detalleCuota").append(        
     
     //Para colocar en tabla
-              '<thead><tr><th align="center" style="dislay: none;">Numero de cuota</th>'+
-              '<th align="center" style="dislay: none;">Valor cuota</th>'+
-              '<th align="center" style="dislay: none;">Fecha de Cuota</th>'+
-              '<th align="center" style="dislay: none;">estado</th>'+
-              '</tr></thead>'+
-      
+             
    '<tr>'+
-    '<td>'+items.numero_cuota+'</td>'+
-    '<td>'+items.valor_cuota + '</td>'+
+    '<td>'+items.d_numero_cuota+'</td>'+
+    '<td>'+items.valor_cuota+ '</td>'+
     '<td>'+items.fecha_cuota+ '</td>'+
+    '<td>'+items.valor_cuota_pagada+ '</td>'+
     '<td>'+items.estado+ '</td>'+
+    
     '</tr>'
     
     );
@@ -472,6 +563,52 @@ $(document).on('click', '.detalle', function(){
 });
 });
  
+//Detalle pagos
+
+$(document).on('click', '.pagos', function(){
+  
+  var id = $(this).attr('id');
+  $("#detallePago").empty();
+  
+  $.ajax({
+  url:"pago/"+id+"",
+  dataType:"json",
+  success:function(dataPagos){
+    $("#detallePago").append( 
+      '<thead><tr><th align="center" style="dislay: none;">Numero de Prestamo</th>'+
+              '<th align="center" style="dislay: none;">Numero de cuota</th>'+
+              '<th align="center" style="dislay: none;">Valor Abono</th>'+
+              '<th align="center" style="dislay: none;">Observacion de Abono</th>'+
+              '<th align="center" style="dislay: none;">Fecha de cuota</th>'+
+              '<th align="center" style="dislay: none;">Fecha y hora de pago</th>'+
+                            '</tr></thead>'
+      );
+    $.each(dataPagos.result1, function(i, items){
+    $("#detallePago").append(        
+    
+    //Para colocar en tabla
+             
+   '<tr>'+
+    '<td>'+items.prestamo_id+'</td>'+
+    '<td>'+items.numero_cuota + '</td>'+
+    '<td>'+items.valor_abono+ '</td>'+
+    '<td>'+items.observacion_pago+ '</td>'+
+    '<td>'+items.fecha_pago+ '</td>'+
+    '<td>'+items.created_at+ '</td>'+
+    '</tr>'
+    
+    );
+    });
+    $('.modal-title-p').text('Detalle de prestamo');
+    $('#modal-p').modal('show');  
+    
+  
+  } 
+ 
+  
+  
+});
+});
 
 });
 

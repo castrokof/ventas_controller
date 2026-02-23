@@ -24,7 +24,9 @@
   <!-- Theme Toastr -->
   
   <!-- Theme Toastr -->
-  <link href="//cdn.jsdelivr.net/npm/@sweetalert2/theme-bootstrap-4/bootstrap-4.css" rel="stylesheet">
+  
+  <link rel="stylesheet" href="{{asset("assets/$theme/plugins/sweetalert2/sweetalert2.min.css")}}"> 
+  
   
   
   <!--<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">-->
@@ -41,7 +43,8 @@
   <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700" rel="stylesheet">
 </head>
 
-<body class="hold-transition skin-blue sidebar-mini layout-fixed sidebar-collapse">
+<body class="hold-transition skin-blue sidebar-mini layout-fixed layout-navbar-fixed sidebar-collapse">
+<div class="loader1"></div>
 @php
 $iduser = Session()->get('usuario');
 $id= Session()->get('usuario_id');
@@ -61,7 +64,8 @@ $id= Session()->get('usuario_id');
      
      <!-- Content Wrapper. Contains page content -->
           <div class="content-wrapper">
-            <!-- Content Header (Page header) -->
+            
+     <!-- Content Header (Page header) -->
             <section class="content">
                   @yield("contenido")       
             </section>
@@ -84,9 +88,14 @@ $id= Session()->get('usuario_id');
 
 @yield("scriptsPlugins")
 
-<script src="//cdn.jsdelivr.net/npm/sweetalert2@9/dist/sweetalert2.min.js"></script>
+<!--<script src="//cdn.jsdelivr.net/npm/sweetalert2@9/dist/sweetalert2.min.js"></script>-->
+
 <!-- Jq Sweet alert cdn -->
-<script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
+
+<script src="{{asset("assets/$theme/plugins/sweetalert2/sweetalert2.all.min.js")}}"></script>
+<!-- <script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>-->
+
+
 <!-- Jq Toastr cdn -->
 <!--<script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>-->
 <script src="{{asset("assets/$theme/plugins/toastr/toastr.min.js")}}"></script>
@@ -98,6 +107,18 @@ $id= Session()->get('usuario_id');
 @yield("scripts")
 
 <script src="{{asset("assets/pages/scripts/admin/usuario/crear.js")}}" type="text/javascript"></script>
+
+<script type="text/javascript">
+  
+  $(window).on("load",function() {
+      $(".loader1").fadeOut("slow");
+  });
+  </script>
+
+
+
+
+
 <script>
 
   $(document).ready(function(){

@@ -32,14 +32,18 @@ class EmpleadoController extends Controller
             if($request->ajax()){
     
                                  
-                $datas = Empleado::orderBy('id')->get();
+                $datas = DB::table('empleado')
+                ->join('empresa', 'empleado.empresa_id', '=', 'empresa.id')
+                ->orderBy('empleado.ide')->get();
                 return  DataTables()->of($datas)
                 // ->addColumn('editar', '<a href="{{url("empleado/$id/editar")}}" class="btn-accion-tabla tooltipsC" title="Editar este empleado">
                 //       <i class="fa fa-fw fa-pencil-alt"></i>
                 //     </a>')
                 ->addColumn('editar', function($datas){
-              $button = '<button type="button" name="edit" id="'.$datas->id.'"
+              $button = '<button type="button" name="edit" id="'.$datas->ide.'"
               class = "edit btn btn-primary btn-sm">Editar</button>';
+              $button .='&nbsp;<button type="button" name="prestamo" id="'.$datas->ide.'"
+              class = "clientes btn-float  bg-gradient-warning btn-sm tooltipsC" title="Ver Cliente"><i class="fa fa-fw fa-plus-circle"></i><i class="fas fa-user"></i></button>';
               return $button;
     
                 }) 
@@ -55,25 +59,26 @@ class EmpleadoController extends Controller
         $empleado_id = $request->session()->get('empleado_id');
         
         $empresa = DB::table('empleado')->Join('empresa', 'empleado.empresa_id', '=', 'empresa.id')
-        ->where('empleado.id', '=', $empleado_id)->pluck('empresa.id', 'empresa.nombre')->toArray();
+        ->where('empleado.ide', '=', $empleado_id)->pluck('empresa.id', 'empresa.nombre')->toArray();
 
         $empresaLogin = DB::table('empleado')->Join('empresa', 'empleado.empresa_id', '=', 'empresa.id')
-        ->where('empleado.id', '=', $empleado_id)->select('empleado.empresa_id')->get();
+        ->where('empleado.ide', '=', $empleado_id)->select('empleado.empresa_id')->get();
 
        
         if($request->ajax()){
 
             foreach ($empresaLogin as $empresa) {
                              
-            $datas = Empleado::where('empresa_id', '=', $empresa->empresa_id)->orderBy('id')->get();
-            return  DataTables()->of($datas)
-            // ->addColumn('editar', '<a href="{{url("empleado/$id/editar")}}" class="btn-accion-tabla tooltipsC" title="Editar este empleado">
-            //       <i class="fa fa-fw fa-pencil-alt"></i>
-            //     </a>')
-            ->addColumn('editar', function($datas){
-          $button = '<button type="button" name="edit" id="'.$datas->id.'"
-          class = "edit btn btn-primary btn-sm">Editar</button>';
-          return $button;
+                $datas = DB::table('empleado')
+                ->join('empresa', 'empleado.empresa_id', '=', 'empresa.id')
+                ->where('empresa_id', '=', $empresa->empresa_id)->orderBy('empleado.ide')->get();
+                return  DataTables()->of($datas)
+                ->addColumn('editar', function($datas){
+                $button = '<button type="button" name="edit" id="'.$datas->ide.'"
+                class = "edit btn btn-primary btn-sm">Editar</button>';
+                $button .='&nbsp;<button type="button" name="prestamo" id="'.$datas->ide.'"
+                class = "clientes btn-float  bg-gradient-warning btn-sm tooltipsC" title="Ver Clientes"><i class="fa fa-fw fa-plus-circle"></i><i class="fas fa-user"></i></button>';
+                return $button;
 
             }) 
             ->rawColumns(['editar'])
@@ -84,6 +89,8 @@ class EmpleadoController extends Controller
         return view('admin.empleado.index', compact('empresa'));
         }
     }
+
+    
 
     /**
      * Show the form for creating a new resource.
@@ -147,10 +154,11 @@ class EmpleadoController extends Controller
     public function editar($id)
     { 
 
+
         $empresa = Empresa::orderBy('id')->pluck('id','nombre')->toArray();
         
         if(request()->ajax()){
-            $data = Empleado::findOrFail($id);
+            $data = Empleado::where('ide', '=', $id)->first();
             return response()->json(['result'=>$data]);
         
         }
@@ -169,11 +177,25 @@ class EmpleadoController extends Controller
     public function actualizar(ValidacionEmpleado $request, $id)
     {
         if(request()->ajax()){
-        $usuario = Empleado::findOrFail($id);
-        $usuario->update($request->all());
+        Empleado::where('ide', '=', $id)
+        ->update([
+            'nombres' => $request->nombres,
+            'apellidos' => $request->apellidos,
+            'tipo_documento' => $request->tipo_documento,
+            'documento'  => $request->documento,
+            'pais' => $request->pais,
+            'ciudad' => $request->ciudad,
+            'barrio' => $request->barrio,
+            'direccion' => $request->direccion,
+            'celular' => $request->celular,
+            'telefono' => $request->telefono,
+            'activo' => $request->activo,
+            'empresa_id' => $request->empresa_id,
+            'updated_at' => now()
+        ]);  
         return response()->json(['success' => 'ok1']);
         }
-        return redirect('empleado')->with('mensaje', 'Empresa actualizada con exito!!');
+        return redirect('empleado')->with('mensaje', 'Empleado actualizada con exito!!');
     
     }
 

@@ -6,6 +6,10 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
 use Illuminate\Support\Facades\Auth;
+use App\Models\Admin\Empleado;
+use App\Models\Admin\Empresa;
+use App\Models\Admin\Rol;
+use Illuminate\Support\Facades\DB;
 
 class LoginController extends Controller
 {
@@ -55,23 +59,40 @@ class LoginController extends Controller
     }
     public function loginMovil(Request $request)
     {   
-       
+        
          if(Auth::attempt($request->only('usuario','password'))){
 
             $user = Auth::user();
             
+           $userlogin = DB::table('usuario')->Join('usuario_rol', 'usuario.id', '=', 'usuario_rol.usuario_id')
+           ->Join('empleado', 'usuario.empleado_id', '=', 'empleado.ide')
+           ->where('usuario.usuario', '=', $user->usuario)->get();
+            
+            
+                
+            $useractivo = $user->where([
+            ['usuario', '=', $request->usuario],
+            ['activo', '=', 1]
+        
+            ])->count();
+            
+            
+            
+            if($useractivo >= 1){  
+            
             return Response()->json([
-            'user' => $user
+            'user' => $userlogin
         ], 200);
 
-
+            } else {
+                
+                if($useractivo == 0)
+                return response()->json(['error'=> 'Usuario creado sin activación'], 401);
+            }
 
          }else{
-
-
-
-            return response()->json(['error'=> 'Unauthorised'], 401);
-
+             return response()->json(['error'=> 'Unauthorised'], 400);
+             
          }
 
         
