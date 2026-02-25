@@ -204,6 +204,47 @@ Route::put('marca/{id}', 'MarcasController@actualizar')->name('actualizar_marca'
    
 });
 
+/* ══════════════════════════════════════════════════════════════
+ * RUTAS V2 — Modernización progresiva (parallel path)
+ * NO modificar ni eliminar las rutas originales de arriba.
+ * ══════════════════════════════════════════════════════════════ */
+Route::prefix('admin/v2')
+    ->name('admin.v2.')
+    ->middleware(['auth', 'superConsultor'])
+    ->namespace('Admin\V2')
+    ->group(function () {
+
+    /* Pago card V2 — vista modernizada */
+    Route::get('pago-card', 'PagoController@index')->name('pago_card.index');
+
+    /* Los endpoints AJAX de pago siguen usando el controlador original.
+     * Se agregan aquí para cuando se cree la lógica V2 propia.
+     * Por ahora apuntan al mismo PagoCalenderController base. */
+    Route::post('pago-card/guardar',   'PagoController@guardar')->name('pago_card.guardar');
+    Route::get('pago-card/{id}/edit',  'PagoController@editar')->name('pago_card.editar');
+    Route::put('pago-card/{id}',       'PagoController@actualizar')->name('pago_card.actualizar');
+    Route::get('pago-card/{id}/editpay', 'PagoController@editpay')->name('pago_card.editpay');
+
+    /* ── Préstamos V2 ────────────────────────────────────────────── */
+    /* Vista principal (lista + DataTable AJAX) */
+    Route::get( 'prestamo',                 'PrestamoController@index')      ->name('prestamo.index');
+    /* Crear préstamo + cuotas */
+    Route::post('prestamo',                 'PrestamoController@guardar')    ->name('prestamo.guardar');
+    /* Anular (soft-delete) */
+    Route::put( 'prestamo/{id}/anular',     'PrestamoController@anularp')    ->name('prestamo.anular');
+    /* Datos para formulario de refinanciamiento */
+    Route::get( 'prestamo/{id}/refinanciar','PrestamoController@refinanciar')->name('prestamo.refinanciar');
+    /* Guardar refinanciamiento */
+    Route::post('prestamo/refinanciar',     'PrestamoController@refiguardar')->name('prestamo.refiguardar');
+    /* AJAX: cuotas detalladas del préstamo (por idp) */
+    Route::get( 'prestamo/{id}/cuotas',     'PrestamoController@detalle')    ->name('prestamo.cuotas');
+    /* AJAX: info del préstamo por idp */
+    Route::get( 'prestamo/{id}/detalle',    'PrestamoController@detallep')   ->name('prestamo.detalle');
+    /* AJAX: datos completos de préstamo + cliente */
+    Route::get( 'prestamo/{id}/detalle-completo', 'PrestamoController@detallepn')->name('prestamo.detalle_completo');
+
+});
+
 Route::group(['middleware' => ['auth','superEditor']], function () {
 
 /* ORDENES CRITICA */
