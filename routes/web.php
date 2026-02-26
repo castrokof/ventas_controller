@@ -243,6 +243,16 @@ Route::prefix('admin/v2')
     /* AJAX: datos completos de préstamo + cliente */
     Route::get( 'prestamo/{id}/detalle-completo', 'PrestamoController@detallepn')->name('prestamo.detalle_completo');
 
+    /* ── Clientes V2 ─────────────────────────────────────────────── */
+    /* Vista principal (lista DataTable AJAX) + crear */
+    Route::get( 'cliente',              'ClienteController@index')    ->name('cliente.index');
+    Route::post('cliente',              'ClienteController@guardar')  ->name('cliente.guardar');
+    /* Editar / actualizar */
+    Route::get( 'cliente/{id}/editar',  'ClienteController@editar')   ->name('cliente.editar');
+    Route::put( 'cliente/{id}',         'ClienteController@actualizar')->name('cliente.actualizar');
+    /* AJAX: detalle de préstamos del cliente */
+    Route::get( 'cliente/{id}/detalle', 'ClienteController@detalle')  ->name('cliente.detalle');
+
 });
 
 Route::group(['middleware' => ['auth','superEditor']], function () {
