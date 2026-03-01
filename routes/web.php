@@ -253,6 +253,18 @@ Route::prefix('admin/v2')
     /* AJAX: detalle de préstamos del cliente */
     Route::get( 'cliente/{id}/detalle', 'ClienteController@detalle')  ->name('cliente.detalle');
 
+    /* ── Empleados V2 ────────────────────────────────────────────── */
+    Route::get( 'empleado',              'EmpleadoController@index')    ->name('empleado.index');
+    Route::post('empleado',              'EmpleadoController@guardar')  ->name('empleado.guardar');
+    Route::get( 'empleado/{id}/editar',  'EmpleadoController@editar')   ->name('empleado.editar');
+    Route::put( 'empleado/{id}',         'EmpleadoController@actualizar')->name('empleado.actualizar');
+
+    /* ── Gastos V2 ───────────────────────────────────────────────── */
+    Route::get( 'gasto',              'GastoController@index')    ->name('gasto.index');
+    Route::post('gasto',              'GastoController@guardar')  ->name('gasto.guardar');
+    Route::get( 'gasto/{id}/editar',  'GastoController@editar')   ->name('gasto.editar');
+    Route::put( 'gasto/{id}',         'GastoController@actualizar')->name('gasto.actualizar');
+
 });
 
 Route::group(['middleware' => ['auth','superEditor']], function () {
