@@ -10,6 +10,7 @@
 <link href="{{asset("assets/$theme/plugins/datatables-responsive/css/responsive.bootstrap4.min.css")}}" rel="stylesheet">
 <link href="{{asset("assets/css/select2-bootstrap.min.css")}}" rel="stylesheet">
 <link href="{{asset("assets/css/select2.min.css")}}" rel="stylesheet">
+@include('admin.v2._partials.mobile-styles')
 <style>
 /* ── Skeleton loader ─────────────────────────────── */
 .skeleton-cell {

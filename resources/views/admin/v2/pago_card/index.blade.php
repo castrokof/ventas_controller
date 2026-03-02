@@ -10,6 +10,7 @@
 <link href="{{asset("assets/$theme/plugins/datatables-bs4/css/dataTables.bootstrap4.css")}}" rel="stylesheet">
 <link href="{{asset("assets/css/select2-bootstrap.min.css")}}" rel="stylesheet">
 <link href="{{asset("assets/css/select2.min.css")}}" rel="stylesheet">
+@include('admin.v2._partials.mobile-styles')
 <style>
 /* ── V2 Layout ─────────────────────────────────────── */
 .v2-tab-nav .nav-link          { font-size: 12px; font-weight: 700; color: #495057; text-transform: uppercase; letter-spacing: .5px; }
