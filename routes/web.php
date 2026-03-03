@@ -214,16 +214,23 @@ Route::prefix('admin/v2')
     ->namespace('Admin\V2')
     ->group(function () {
 
-    /* Pago card V2 — vista modernizada */
-    Route::get('pago-card', 'PagoController@index')->name('pago_card.index');
+    /* Pago card V2 — vista principal */
+    Route::get('pago-card', 'PagoController@indexcp')->name('pago_card.index');
 
-    /* Los endpoints AJAX de pago siguen usando el controlador original.
-     * Se agregan aquí para cuando se cree la lógica V2 propia.
-     * Por ahora apuntan al mismo PagoCalenderController base. */
-    Route::post('pago-card/guardar',   'PagoController@guardar')->name('pago_card.guardar');
-    Route::get('pago-card/{id}/edit',  'PagoController@editar')->name('pago_card.editar');
-    Route::put('pago-card/{id}',       'PagoController@actualizar')->name('pago_card.actualizar');
-    Route::get('pago-card/{id}/editpay', 'PagoController@editpay')->name('pago_card.editpay');
+    /* Endpoints AJAX — rutas estáticas ANTES de los comodines {id} */
+    Route::post('pago-card/guardar',      'PagoController@guardar')          ->name('pago_card.guardar');
+    Route::get('pago-card/tab',           'PagoController@indexc')           ->name('pago_card.tab');
+    Route::get('pago-card/adelanto',      'PagoController@indexAdelanto')    ->name('pago_card.adelanto');
+    Route::get('pago-card/atrasos',       'PagoController@indexAtrasosp')    ->name('pago_card.atrasos');
+    Route::get('pago-card/registrados',   'PagoController@indexRegistrados') ->name('pago_card.registrados');
+    Route::get('pago-card/pagonow',       'PagoController@indexPagonow')     ->name('pago_card.pagonow');
+
+    /* Endpoints AJAX — comodines {id} */
+    Route::get('pago-card/{id}/edit',    'PagoController@editar')   ->name('pago_card.editar');
+    Route::get('pago-card/{id}/editpay', 'PagoController@editpay')  ->name('pago_card.editpay');
+    Route::get('pago-card/{id}/editarp', 'PagoController@editarp')  ->name('pago_card.editarp');
+    Route::put('pago-card/{id}',         'PagoController@actualizar')->name('pago_card.actualizar');
+    Route::get('pago-card/{id}',         'PagoController@detalle')  ->name('pago_card.detalle');
 
     /* ── Préstamos V2 ────────────────────────────────────────────── */
     /* Vista principal (lista + DataTable AJAX) */
