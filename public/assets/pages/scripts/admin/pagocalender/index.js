@@ -336,12 +336,12 @@ function iniciarTablaPago() {
     dtPago = $('#pago').DataTable({
         language:   idioma,
         processing: true,
-        serverSide: true,
         responsive: true,
         ajax: {
             url: BASE_PC + '/tab',
-            data: function (d) {
-                d.estado_pago = $('#estado_pago').val();
+            type: 'get',
+            data: function () {
+                return { estado_pago: $('#estado_pago').val() };
             },
         },
         columns: COL_CARD,
@@ -356,9 +356,8 @@ function iniciarTablaPrestamoCard() {
     $('#prestamos').DataTable({
         language:   idioma,
         processing: true,
-        serverSide: true,
         responsive: true,
-        ajax: { url: BASE_PC },
+        ajax: { url: BASE_PC, type: 'get' },
         columns: COL_CARD,
     });
 }
@@ -371,12 +370,11 @@ function iniciarTablaClientes() {
     $('#clientecard').DataTable({
         language:   idioma,
         processing: true,
-        serverSide: true,
         responsive: true,
-        ajax: { url: '/clientes_card' },
+        ajax: { url: '/clientes_card', type: 'get' },
         columns: [
             { data: 'datos',       orderable: false, searchable: false, defaultContent: '' },
-            { data: 'consecutivo', name: 'consecutivo', defaultContent: '' },
+            { data: 'consecutivo', defaultContent: '' },
         ],
     });
 }
