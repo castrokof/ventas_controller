@@ -137,7 +137,10 @@ class PrestamoController extends Controller
             return response()->json(['errors' => $validator->errors()->all()], 422);
         }
 
-        DB::transaction(function () use ($request) {
+        $incluirDomingo = (bool) $request->input('incluir_domingo', 0);
+        $incluirFestivo = (bool) $request->input('incluir_festivo', 0);
+
+        DB::transaction(function () use ($request, $incluirDomingo, $incluirFestivo) {
             Prestamo::create($request->all());
 
             $prestamoId = Prestamo::latest('idp')->value('idp');
@@ -147,7 +150,9 @@ class PrestamoController extends Controller
                 $request->tipo_pago,
                 (int) $request->cuotas,
                 $request->fecha_inicial,
-                (float) $request->valor_cuota
+                (float) $request->valor_cuota,
+                $incluirDomingo,
+                $incluirFestivo
             );
         });
 
@@ -224,7 +229,10 @@ class PrestamoController extends Controller
             return response()->json(['errors' => $validator->errors()->all()], 422);
         }
 
-        DB::transaction(function () use ($request) {
+        $incluirDomingo = (bool) $request->input('incluir_domingo', 0);
+        $incluirFestivo = (bool) $request->input('incluir_festivo', 0);
+
+        DB::transaction(function () use ($request, $incluirDomingo, $incluirFestivo) {
 
             // 1. Registrar el pago de cierre
             Pago::create($request->all());
@@ -268,7 +276,9 @@ class PrestamoController extends Controller
                 $request->tipo_pago,
                 (int) $request->cuotas,
                 $request->fecha_inicial,
-                (float) $request->valor_cuota
+                (float) $request->valor_cuota,
+                $incluirDomingo,
+                $incluirFestivo
             );
         });
 
@@ -359,9 +369,14 @@ class PrestamoController extends Controller
         string $tipoPago,
         int $cuotas,
         string $fechaInicial,
-        float $valorCuota
+        float $valorCuota,
+        bool $incluirDomingo = true,
+        bool $incluirFestivo = true
     ): void {
         $rows = [];
+
+        // Ajustar la fecha inicial si cae en domingo o festivo excluido
+        $fechaInicial = $this->skipToValidDate($fechaInicial, $incluirDomingo, $incluirFestivo);
 
         for ($i = 0; $i < $cuotas; $i++) {
             $rows[] = [
@@ -375,8 +390,9 @@ class PrestamoController extends Controller
                 'updated_at'     => now(),
             ];
 
-            // Avanzar fecha para la siguiente cuota
+            // Avanzar fecha y aplicar ajuste de domingo/festivo
             $fechaInicial = $this->advanceDate($fechaInicial, $tipoPago);
+            $fechaInicial = $this->skipToValidDate($fechaInicial, $incluirDomingo, $incluirFestivo);
         }
 
         DB::table('detalle_prestamo')->insert($rows);
@@ -464,5 +480,122 @@ class PrestamoController extends Controller
         return $dow === 6
             ? $d->addDays(2)->toDateString()
             : $d->addDays(1)->toDateString();
+    }
+
+    /**
+     * Avanza la fecha hasta que no caiga en domingo (si excluido) ni en
+     * festivo colombiano (si excluido). Si ambos están permitidos, no hace nada.
+     */
+    private function skipToValidDate(string $date, bool $incluirDomingo, bool $incluirFestivo): string
+    {
+        if ($incluirDomingo && $incluirFestivo) {
+            return $date;
+        }
+
+        $d = Carbon::createFromFormat('Y-m-d', $date);
+
+        $changed = true;
+        while ($changed) {
+            $changed = false;
+
+            if (! $incluirDomingo && $d->dayOfWeek === Carbon::SUNDAY) {
+                $d->addDay();
+                $changed = true;
+                continue;
+            }
+
+            if (! $incluirFestivo && $this->isFestivoColombia($d)) {
+                $d->addDay();
+                $changed = true;
+            }
+        }
+
+        return $d->toDateString();
+    }
+
+    /**
+     * Indica si una fecha es festivo en Colombia.
+     *
+     * Categorías:
+     *  1. Festivos fijos (no se mueven).
+     *  2. Festivos Ley Emiliani: si no caen en lunes, se trasladan al
+     *     siguiente lunes.
+     *  3. Jueves y Viernes Santo (basados en Pascua).
+     *  4. Móviles Ley Emiliani basados en Pascua (Ascensión, Corpus Christi,
+     *     Sagrado Corazón).
+     */
+    private function isFestivoColombia(Carbon $date): bool
+    {
+        $year  = $date->year;
+        $month = $date->month;
+        $day   = $date->day;
+
+        // ── 1. Festivos fijos ────────────────────────────────────────────────
+        $fijos = [
+            [1,  1],   // Año Nuevo
+            [5,  1],   // Día del Trabajo
+            [7,  20],  // Independencia de Colombia
+            [8,  7],   // Batalla de Boyacá
+            [12, 8],   // Inmaculada Concepción
+            [12, 25],  // Navidad
+        ];
+
+        foreach ($fijos as [$m, $d]) {
+            if ($month === $m && $day === $d) {
+                return true;
+            }
+        }
+
+        // ── 2. Festivos Ley Emiliani ─────────────────────────────────────────
+        //    Si la fecha base no es lunes, el festivo se corre al siguiente lunes.
+        $emiliani = [
+            [1,  6],   // Reyes Magos
+            [3,  19],  // San José
+            [6,  29],  // San Pedro y San Pablo
+            [8,  15],  // Asunción de la Virgen
+            [10, 12],  // Día de la Raza
+            [11, 1],   // Todos los Santos
+            [11, 11],  // Independencia de Cartagena
+        ];
+
+        foreach ($emiliani as [$m, $d]) {
+            $base = Carbon::create($year, $m, $d);
+            if ($base->dayOfWeek !== Carbon::MONDAY) {
+                $base->next(Carbon::MONDAY);
+            }
+            if ($date->isSameDay($base)) {
+                return true;
+            }
+        }
+
+        // ── 3 & 4. Festivos basados en Pascua ───────────────────────────────
+        //    easter_days() devuelve días después del 21 de marzo → sin TZ.
+        $easter = Carbon::create($year, 3, 21)->addDays(easter_days($year));
+
+        // Jueves y Viernes Santo (fijos respecto a Pascua)
+        if ($date->isSameDay($easter->copy()->subDays(3))) {
+            return true;
+        }
+        if ($date->isSameDay($easter->copy()->subDays(2))) {
+            return true;
+        }
+
+        // Móviles Ley Emiliani basados en Pascua
+        $movilesPascua = [
+            $easter->copy()->addDays(39),  // Ascensión del Señor
+            $easter->copy()->addDays(60),  // Corpus Christi
+            $easter->copy()->addDays(68),  // Sagrado Corazón de Jesús
+        ];
+
+        foreach ($movilesPascua as $base) {
+            if ($base->dayOfWeek !== Carbon::MONDAY) {
+                $base->next(Carbon::MONDAY);
+            }
+            if ($date->isSameDay($base)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
