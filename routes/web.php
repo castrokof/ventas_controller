@@ -214,6 +214,9 @@ Route::prefix('admin/v2')
     ->namespace('Admin\V2')
     ->group(function () {
 
+    /* ── Tablero V2 ──────────────────────────────────────────────── */
+    Route::get('tablero', 'TableroController@index')->name('tablero.index');
+
     /* Pago card V2 — vista principal */
     Route::get('pago-card', 'PagoController@indexcp')->name('pago_card.index');
 
