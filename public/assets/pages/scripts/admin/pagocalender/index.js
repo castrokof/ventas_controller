@@ -129,21 +129,22 @@ $(function () {
     $(document).on('click', '.detalle', function () {
         const id = $(this).attr('id');
         $('.modal-title-d').text('Cuotas del Crédito #' + id);
-        if ($.fn.DataTable.isDataTable('#detalleCuota')) $('#detalleCuota').DataTable().destroy();
-        $('#detalleCuota').DataTable({
-            language:   idioma,
-            processing: true,
-            serverSide: true,
-            ajax: { url: '/admin/v2/prestamo/' + id + '/cuotas' },
-            columns: [
-                { data: 'd_numero_cuota', title: '# Cuota', defaultContent: '' },
-                { data: 'valor_cuota',    title: 'Valor $',  defaultContent: '' },
-                { data: 'fecha_cuota',    title: 'Fecha',    defaultContent: '' },
-                { data: 'valor_cuota_pagada', title: 'Pagado $', defaultContent: '—' },
-                { data: 'estado',         title: 'Estado',   defaultContent: '' },
-            ],
-        });
+        const $tbody = $('#detalleCuota tbody');
+        $tbody.html('<tr><td colspan="5" class="text-center"><i class="fas fa-spinner fa-spin"></i></td></tr>');
         $('#modal-d').modal('show');
+        $.get('/admin/v2/prestamo/' + id + '/cuotas', function (data) {
+            const est = { C: '<span class="badge badge-warning">Pendiente</span>', P: '<span class="badge badge-success">Pagada</span>', A: '<span class="badge badge-danger">Anulada</span>', T: '<span class="badge badge-info">Transferida</span>' };
+            const rows = (data.result || []).map(function (c) {
+                return '<tr><td>' + c.d_numero_cuota + '</td>'
+                     + '<td>$' + parseFloat(c.valor_cuota).toLocaleString('es-CO') + '</td>'
+                     + '<td>' + c.fecha_cuota + '</td>'
+                     + '<td>' + (c.valor_cuota_pagada ? '$' + parseFloat(c.valor_cuota_pagada).toLocaleString('es-CO') : '—') + '</td>'
+                     + '<td>' + (est[c.estado] || c.estado) + '</td></tr>';
+            });
+            $tbody.html(rows.length ? rows.join('') : '<tr><td colspan="5" class="text-center text-muted">Sin cuotas.</td></tr>');
+        }).fail(function () {
+            $tbody.html('<tr><td colspan="5" class="text-center text-danger">Error al cargar.</td></tr>');
+        });
     });
 
     /* ── detallepay: pagos realizados al crédito en modal-dp ─────────────── */
@@ -180,7 +181,6 @@ $(function () {
         $('#pagoa').DataTable({
             language:   idioma,
             processing: true,
-            serverSide: true,
             ajax: { url: BASE_PC + '/adelanto', data: { prestamoc_id: id } },
             columns: [
                 { data: 'action',         orderable: false, searchable: false, defaultContent: '' },
@@ -203,7 +203,6 @@ $(function () {
         $('#atrasosp').DataTable({
             language:   idioma,
             processing: true,
-            serverSide: true,
             ajax: { url: BASE_PC + '/atrasos', data: { prestamoc_id: id } },
             columns: [
                 { data: 'action',         orderable: false, searchable: false, defaultContent: '' },

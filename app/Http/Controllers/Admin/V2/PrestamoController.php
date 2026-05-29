@@ -103,7 +103,23 @@ class PrestamoController extends Controller
                         <i class="fas fa-atlas" aria-hidden="true"></i>
                     </button>';
 
-                    return $btnPagos . '&nbsp;' . $btnDetalle;
+                    $btnAnular = '<button type="button"
+                        class="btn-v2-action bg-gradient-danger btn-sm tooltipsC anularp"
+                        data-id="' . $row->idp . '"
+                        title="Anular préstamo"
+                        aria-label="Anular préstamo ' . $row->idp . '">
+                        <i class="fas fa-times" aria-hidden="true"></i>
+                    </button>';
+
+                    $btnRefi = '<button type="button"
+                        class="btn-v2-action bg-gradient-info btn-sm tooltipsC refinanciar"
+                        data-id="' . $row->idp . '"
+                        title="Refinanciar"
+                        aria-label="Refinanciar préstamo ' . $row->idp . '">
+                        <i class="fas fa-sync-alt" aria-hidden="true"></i>
+                    </button>';
+
+                    return $btnPagos . '&nbsp;' . $btnDetalle . '&nbsp;' . $btnRefi . '&nbsp;' . $btnAnular;
                 })
                 ->addColumn('estado_badge', function ($row) {
                     if ($row->monto_atrasado > 0) {

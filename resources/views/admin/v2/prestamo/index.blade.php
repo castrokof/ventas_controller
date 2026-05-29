@@ -271,6 +271,98 @@
 @endsection
 
 
+{{-- ════════════════════════════════════════════════════ --}}
+{{-- MODAL: Refinanciar préstamo                          --}}
+{{-- ════════════════════════════════════════════════════ --}}
+<div class="modal fade" id="modal-refinanciar" tabindex="-1"
+     role="dialog" aria-labelledby="modal-refi-titulo" aria-modal="true"
+     style="overflow-y:scroll">
+  <div class="modal-dialog modal-xl" role="document">
+    <div class="modal-content position-relative">
+
+      <div class="v2-loader" id="loader-refi" aria-hidden="true">
+        <img src="{{asset("assets/$theme/dist/img/loader6.gif")}}"
+             alt="Procesando..." style="width:120px">
+      </div>
+
+      <div class="card card-info mb-0">
+        <div class="card-header d-flex align-items-center">
+          <h6 class="mb-0 flex-grow-1" id="modal-refi-titulo">
+            <i class="fas fa-sync-alt mr-1" aria-hidden="true"></i>
+            Refinanciar Préstamo <span id="refi-idp"></span>
+          </h6>
+          <button type="button" class="btn btn-sm btn-secondary"
+                  data-dismiss="modal" aria-label="Cerrar">
+            <i class="fas fa-times" aria-hidden="true"></i> Cerrar
+          </button>
+        </div>
+
+        <div id="form-result-refi" role="alert" aria-live="polite"></div>
+
+        <form id="form-refinanciar" method="post" novalidate>
+          @csrf
+          {{-- Campos ocultos del préstamo a cerrar --}}
+          <input type="hidden" name="prestamo_id"   id="refi_prestamo_id">
+          <input type="hidden" name="numero_cuota"  id="refi_numero_cuota">
+          <input type="hidden" name="valor_cuota"   id="refi_valor_cuota">
+          <input type="hidden" name="abono"         value="S">
+          <input type="hidden" name="sync"          value="N">
+          <input type="hidden" name="fecha_pago"    id="refi_fecha_pago">
+          <input type="hidden" name="usuario_id"    id="refi_usuario_id" value="{{ session('usuario_id') }}">
+
+          <div class="card-body">
+
+            {{-- ── Sección A: Saldo a abonar ───────────────────── --}}
+            <div class="alert alert-info py-2 mb-3">
+              <strong><i class="fas fa-info-circle mr-1"></i>Cierre del préstamo actual:</strong>
+              Saldo pendiente: <strong id="refi_saldo_label">—</strong>
+            </div>
+            <div class="form-group row">
+              <div class="col-12 col-md-4">
+                <label for="refi_valor_abono" class="font-weight-bold requerido">
+                  Valor abono <span class="text-danger">*</span>
+                </label>
+                <div class="input-group input-group-sm">
+                  <div class="input-group-prepend">
+                    <span class="input-group-text">$</span>
+                  </div>
+                  <input type="number" name="valor_abono" id="refi_valor_abono"
+                         class="form-control" min="0" required
+                         placeholder="Abono al crédito actual">
+                </div>
+              </div>
+              <div class="col-12 col-md-8">
+                <label for="refi_obs_pago" class="font-weight-bold">Observación del pago</label>
+                <input type="text" name="observacion_pago" id="refi_obs_pago"
+                       class="form-control form-control-sm" maxlength="100"
+                       placeholder="Opcional">
+              </div>
+            </div>
+
+            <hr class="my-3">
+            <h6 class="font-weight-bold mb-3">
+              <i class="fas fa-file-invoice-dollar mr-1 text-info"></i>
+              Nuevo préstamo
+            </h6>
+
+            {{-- ── Sección B: Nuevo préstamo ────────────────────── --}}
+            @include('admin.v2.prestamo.form-prestamo')
+
+          </div>
+
+          <div class="card-footer text-right">
+            <button type="button" class="btn btn-secondary mr-2"
+                    data-dismiss="modal">Cancelar</button>
+            <button type="submit" id="btn-guardar-refi" class="btn btn-info">
+              <i class="fas fa-save mr-1"></i>Refinanciar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
 @section('scriptsPlugins')
 <script src="{{asset("assets/$theme/plugins/datatables/jquery.dataTables.js")}}"></script>
 <script src="{{asset("assets/$theme/plugins/datatables-bs4/js/dataTables.bootstrap4.js")}}"></script>
@@ -283,10 +375,11 @@
 <script src="https://cdn.datatables.net/buttons/1.6.1/js/buttons.html5.min.js"></script>
 {{-- JS V2 extraído en archivo separado (no inline) --}}
 <script>
-    // Inyectamos la URL de la ruta como variable global para que el JS externo la use
-    window.V2_PRESTAMO_URL       = "{{ route('admin.v2.prestamo.index') }}";
-    window.V2_GUARDAR_URL        = "{{ route('admin.v2.prestamo.guardar') }}";
-    window.V2_CSRF               = "{{ csrf_token() }}";
+    window.V2_BASE_URL      = "{{ url('admin/v2') }}";
+    window.V2_PRESTAMO_URL  = "{{ route('admin.v2.prestamo.index') }}";
+    window.V2_GUARDAR_URL   = "{{ route('admin.v2.prestamo.guardar') }}";
+    window.V2_REFI_URL      = "{{ route('admin.v2.prestamo.refiguardar') }}";
+    window.V2_CSRF          = "{{ csrf_token() }}";
 </script>
 <script src="{{asset("assets/pages/scripts/admin/prestamo/v2.js")}}" defer></script>
 @endsection

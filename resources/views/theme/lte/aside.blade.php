@@ -44,6 +44,57 @@
           </ul>
       </nav>
       <!-- /.sidebar-menu -->
+
+      {{-- ── Módulos V2 ─────────────────────────────────────── --}}
+      @if(session()->has('usuario_id'))
+      <div class="user-panel mt-2 pb-1 mb-1 d-flex border-top pt-2">
+        <div class="info">
+          <span class="badge badge-info" style="font-size:.65rem;letter-spacing:.5px">V2</span>
+        </div>
+        <div class="info ml-2">
+          <strong style="font-size:.82rem">Módulos V2</strong>
+        </div>
+      </div>
+      <ul class="nav nav-pills nav-sidebar flex-column">
+        <li class="nav-item">
+          <a href="{{ route('admin.v2.tablero.index') }}"
+             class="nav-link {{ request()->routeIs('admin.v2.tablero.*') ? 'active' : '' }}">
+            <i class="nav-icon fas fa-tachometer-alt"></i><p>Dashboard</p>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="{{ route('admin.v2.pago_card.index') }}"
+             class="nav-link {{ request()->routeIs('admin.v2.pago_card.*') ? 'active' : '' }}">
+            <i class="nav-icon fas fa-calendar-check"></i><p>Cobros / Ruta</p>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="{{ route('admin.v2.prestamo.index') }}"
+             class="nav-link {{ request()->routeIs('admin.v2.prestamo.*') ? 'active' : '' }}">
+            <i class="nav-icon fas fa-file-invoice-dollar"></i><p>Préstamos</p>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="{{ route('admin.v2.cliente.index') }}"
+             class="nav-link {{ request()->routeIs('admin.v2.cliente.*') ? 'active' : '' }}">
+            <i class="nav-icon fas fa-users"></i><p>Clientes</p>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="{{ route('admin.v2.empleado.index') }}"
+             class="nav-link {{ request()->routeIs('admin.v2.empleado.*') ? 'active' : '' }}">
+            <i class="nav-icon fas fa-id-badge"></i><p>Empleados</p>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="{{ route('admin.v2.gasto.index') }}"
+             class="nav-link {{ request()->routeIs('admin.v2.gasto.*') ? 'active' : '' }}">
+            <i class="nav-icon fas fa-receipt"></i><p>Gastos</p>
+          </a>
+        </li>
+      </ul>
+      @endif
+
     </div>
     <!-- /.sidebar -->
   </aside>
