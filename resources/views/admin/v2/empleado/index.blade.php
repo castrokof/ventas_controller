@@ -158,8 +158,10 @@ $(function () {
     $('.select2bs4').select2({ theme:'bootstrap4' });
 
     /* ── DataTable ───────────────────────────────── */
+    $('#skeleton-empleados').hide();
+    $('#dt-emp-wrap').show();
     var tabla = $('#tabla-empleados').DataTable({
-        language:ES, processing:true, serverSide:true, responsive:true,
+        language:ES, processing:true, responsive:true,
         order:[[1,'asc']], lengthMenu:[[25,50,100,-1],[25,50,100,'Todo']],
         dom:'<"row"<"col-6"l><"col-6"f>>rt<"row"<"col-7"i><"col-5"p>>',
         ajax:{ url:AJAX_URL },
@@ -170,7 +172,6 @@ $(function () {
             {data:'ciudad'},{data:'barrio'},{data:'direccion'},
             {data:'celular'},{data:'telefono'},{data:'empresa_nombre'},{data:'activo'}
         ],
-        initComplete:function(){$('#skeleton-empleados').hide();$('#dt-emp-wrap').show();}
     });
 
     /* ── Cards móvil ─────────────────────────────── */
