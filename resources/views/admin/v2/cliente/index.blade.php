@@ -186,11 +186,13 @@ $(function () {
     $('.select2bs4').select2({ theme: 'bootstrap4' });
 
     /* ── DataTable ───────────────────────────────── */
+    $('#skeleton-clientes').hide();
+    $('#dt-clientes-wrap').show();
     var tabla = $('#tabla-clientes').DataTable({
-        language: ES, processing:true, serverSide:true, responsive:true,
+        language: ES, processing:true, responsive:true,
         order:[[1,'asc']], lengthMenu:[[25,50,100,-1],[25,50,100,'Todo']],
         dom:'<"row"<"col-6"l><"col-6"f>>rt<"row"<"col-7"i><"col-5"p>>',
-        ajax: { url: AJAX_URL },
+        ajax: { url: AJAX_URL, headers: { 'X-Requested-With': 'XMLHttpRequest' } },
         columns: [
             { data:'action',         orderable:false, searchable:false },
             { data:'consecutivo' }, { data:'nombres' },  { data:'apellidos' },
@@ -200,10 +202,6 @@ $(function () {
             { data:'sector' },      { data:'activo' },    { data:'observacion_cli'},
             { data:'usuario_id' }
         ],
-        initComplete: function () {
-            $('#skeleton-clientes').hide();
-            $('#dt-clientes-wrap').show();
-        }
     });
 
     /* ── Cards móvil ─────────────────────────────── */

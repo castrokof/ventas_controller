@@ -74,14 +74,12 @@ class PrestamoController extends Controller
             ->pluck('usuario', 'id')
             ->toArray();
 
-        if ($request->ajax()) {
+        if ($request->ajax() || $request->has('draw')) {
             $datas = DB::table('prestamo')
                 ->join('cliente', 'prestamo.cliente_id', '=', 'cliente.id')
-                ->where([
-                    ['prestamo.usuario_id',      '=', $usuario_id],
-                    ['prestamo.monto_pendiente', '>',  0],
-                    ['prestamo.delete_at',       '=',  null],
-                ])
+                ->where('prestamo.usuario_id', $usuario_id)
+                ->where('prestamo.monto_pendiente', '>', 0)
+                ->whereNull('prestamo.delete_at')
                 ->get();
 
             return DataTables()->of($datas)

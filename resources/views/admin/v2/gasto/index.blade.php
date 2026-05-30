@@ -166,8 +166,10 @@ function fmtMoney(v){ return '$ '+parseFloat(v||0).toLocaleString('es-CO'); }
 $(function(){
 
     /* ── DataTable ─────────────────────────────── */
+    $('#skeleton-gastos').hide();
+    $('#dt-gasto-wrap').show();
     var tabla = $('#tabla-gastos').DataTable({
-        language:ES, processing:true, serverSide:true, responsive:true,
+        language:ES, processing:true, responsive:true,
         order:[[1,'desc']], lengthMenu:[[25,50,100,-1],[25,50,100,'Todo']],
         dom:'<"row"<"col-6"l><"col-6"f>>rt<"row"<"col-7"i><"col-5"p>>',
         ajax:{
@@ -185,7 +187,6 @@ $(function(){
             {data:'id'},{data:'monto',render:function(v){return fmtMoney(v);}},
             {data:'descripcion',className:'text-wrap'},{data:'created_at'}
         ],
-        initComplete:function(){$('#skeleton-gastos').hide();$('#dt-gasto-wrap').show();}
     });
 
     /* ── Cards móvil ─────────────────────────────── */

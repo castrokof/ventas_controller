@@ -95,7 +95,10 @@ function iniciarTabla() {
         lengthMenu:  [[25, 50, 100, -1], [25, 50, 100, 'Todos']],
         aaSorting:   [[1, 'asc']],
 
-        ajax: { url: window.V2_PRESTAMO_URL },
+        ajax: {
+            url: window.V2_PRESTAMO_URL,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        },
 
         columns: [
             { data: 'action',           name: 'action',           orderable: false, searchable: false },
