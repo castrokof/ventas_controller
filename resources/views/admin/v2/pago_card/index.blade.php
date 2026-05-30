@@ -95,7 +95,7 @@
 <script>
 window.CAL_BASE = '/admin/v2/pago-card';
 </script>
-<script src="{{ asset('assets/pages/scripts/admin/pagocalender/index.js') }}" type="text/javascript"></script>
+<script src="{{ asset('assets/pages/scripts/admin/v2/pago_card/calendar.js') }}" type="text/javascript"></script>
 @endsection
 
 @section('contenido')
