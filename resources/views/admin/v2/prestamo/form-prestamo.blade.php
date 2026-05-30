@@ -201,6 +201,39 @@
 
 </div>
 
+{{-- ── Fila 4: opciones de fechas de cuota ─────────────────── --}}
+<div class="form-group row">
+  <div class="col-12">
+    <label class="font-weight-bold">
+      <i class="fas fa-calendar-times fa-xs mr-1 text-muted" aria-hidden="true"></i>
+      Opciones de fechas de cuota
+    </label>
+    <div class="d-flex flex-wrap">
+
+      <div class="custom-control custom-checkbox mr-4">
+        <input type="checkbox" class="custom-control-input"
+               name="incluir_domingo" id="incluir_domingo_p" value="1"
+               aria-label="Incluir domingos en las fechas de cuota">
+        <label class="custom-control-label" for="incluir_domingo_p">
+          Incluir domingos
+          <small class="text-muted d-block">Si está desmarcado, las cuotas en domingo pasan al lunes</small>
+        </label>
+      </div>
+
+      <div class="custom-control custom-checkbox">
+        <input type="checkbox" class="custom-control-input"
+               name="incluir_festivo" id="incluir_festivo_p" value="1"
+               aria-label="Incluir festivos colombianos en las fechas de cuota">
+        <label class="custom-control-label" for="incluir_festivo_p">
+          Incluir festivos colombianos
+          <small class="text-muted d-block">Si está desmarcado, las cuotas en festivo pasan al día siguiente</small>
+        </label>
+      </div>
+
+    </div>
+  </div>
+</div>
+
 {{-- ── Nota informativa ─────────────────────────────────────── --}}
 <div class="alert alert-light border-left border-success pl-3 py-2 mb-0" role="note">
   <small class="text-muted">

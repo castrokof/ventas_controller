@@ -85,10 +85,12 @@ function iniciarTabla() {
 
     tablaIniciada = true;
 
+    $('#skeleton-prestamos').hide();
+    $('#wrapper-prestamos').show();
+
     const dt = $('#tabla-prestamos').DataTable({
         language:    idioma,
         processing:  true,
-        serverSide:  true,
         responsive:  true,
         lengthMenu:  [[25, 50, 100, -1], [25, 50, 100, 'Todos']],
         aaSorting:   [[1, 'asc']],
@@ -133,11 +135,6 @@ function iniciarTabla() {
             }
         },
 
-        // Ocultar skeleton y mostrar tabla al inicializar
-        initComplete() {
-            $('#skeleton-prestamos').hide();
-            $('#wrapper-prestamos').show();
-        },
     });
 
     return dt;
@@ -226,7 +223,7 @@ $(function () {
         $('#body-cuotas').empty();
 
         $.ajax({
-            url:      `prestamo/${id}/cuotas`,
+            url:      window.V2_BASE_URL + '/prestamo/' + id + '/cuotas',
             dataType: 'json',
             success(data) {
                 const estados = { C: 'Pendiente', P: 'Pagada', A: 'Anulada', T: 'Transferida' };
@@ -263,7 +260,7 @@ $(function () {
         $('#body-pagos').empty();
 
         $.ajax({
-            url:      `pago/${id}`,
+            url:      window.V2_BASE_URL + '/pago-card/' + id,
             dataType: 'json',
             success(data) {
                 if (!data.result1 || data.result1.length === 0) {
@@ -290,6 +287,105 @@ $(function () {
             error() {
                 Swal.fire('Error', 'No se pudo cargar el detalle de pagos.', 'error');
             },
+        });
+    });
+
+    // ── Abrir modal refinanciar ──────────────────────────────────────────
+    $(document).on('click', '.refinanciar', function () {
+        const id = $(this).data('id');
+        $('#form-refinanciar')[0].reset();
+        $('#form-result-refi').html('');
+        $.get(window.V2_BASE_URL + '/prestamo/' + id + '/refinanciar', function (data) {
+            if (!data.result || !data.result.length) {
+                Swal.fire('Error', 'No se pudo cargar el préstamo.', 'error');
+                return;
+            }
+            const r = data.result[0];
+            $('#refi-idp').text('#' + r.idp);
+            $('#refi_prestamo_id').val(r.idp);
+            $('#refi_numero_cuota').val(r.d_numero_cuota);
+            $('#refi_valor_cuota').val(r.valor_cuota);
+            $('#refi_fecha_pago').val(new Date().toISOString().split('T')[0]);
+            $('#refi_usuario_id').val(r.usuario_id);
+            $('#refi_saldo_label').text('$' + parseFloat(r.monto_pendiente).toLocaleString('es-CO'));
+            // Pre-llenar campos del nuevo préstamo
+            $('#cliente_id_p').val(r.cliente_id).trigger('change');
+            $('#tipo_pago_p').val(r.tipo_pago).trigger('change');
+            $('#interes_p').val(r.interes);
+            $('#usuario_id_p').val(r.usuario_id).trigger('change');
+            $('#modal-refinanciar').modal('show');
+        }).fail(function () {
+            Swal.fire('Error', 'No se pudo cargar el préstamo.', 'error');
+        });
+    });
+
+    // ── Envío del formulario de refinanciamiento ─────────────────────────
+    $('#form-refinanciar').on('submit', function (e) {
+        e.preventDefault();
+        Swal.fire({
+            title: '¿Refinanciar el préstamo?',
+            text: 'Se cerrará el préstamo actual y se creará uno nuevo.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, refinanciar',
+            cancelButtonText: 'Cancelar',
+        }).then(result => {
+            if (!result.value) return;
+            $('#loader-refi').addClass('active');
+            $('#btn-guardar-refi').prop('disabled', true);
+            $.ajax({
+                url:      window.V2_REFI_URL,
+                method:   'POST',
+                data:     $(this).serialize(),
+                dataType: 'json',
+                success(data) {
+                    if (data.errors) {
+                        const html = data.errors.map(e => `<div class="alert alert-danger py-1 mb-1">${e}</div>`).join('');
+                        $('#form-result-refi').html(html);
+                        return;
+                    }
+                    $('#modal-refinanciar').modal('hide');
+                    $('#tabla-prestamos').DataTable().ajax.reload();
+                    Swal.fire({ icon: 'success', title: 'Préstamo refinanciado correctamente', timer: 1600, showConfirmButton: false });
+                },
+                error(xhr) {
+                    const msg = xhr.responseJSON?.message || 'Error inesperado.';
+                    $('#form-result-refi').html(`<div class="alert alert-danger py-1 mb-1">${msg}</div>`);
+                },
+                complete() {
+                    $('#loader-refi').removeClass('active');
+                    $('#btn-guardar-refi').prop('disabled', false);
+                },
+            });
+        });
+    });
+
+    // ── Anular préstamo ──────────────────────────────────────────────────
+    $(document).on('click', '.anularp', function () {
+        const id = $(this).data('id');
+        Swal.fire({
+            title: '¿Anular este préstamo?',
+            text: 'El préstamo quedará inactivo y no podrá revertirse.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, anular',
+            confirmButtonColor: '#dc3545',
+            cancelButtonText: 'Cancelar',
+        }).then(function (result) {
+            if (!result.value) return;
+            $.ajax({
+                url:    window.V2_BASE_URL + '/prestamo/' + id + '/anular',
+                method: 'POST',
+                data:   { _method: 'PUT', _token: window.V2_CSRF },
+                dataType: 'json',
+                success: function () {
+                    $('#tabla-prestamos').DataTable().ajax.reload();
+                    Swal.fire({ icon: 'success', title: 'Préstamo anulado.', timer: 1500, showConfirmButton: false });
+                },
+                error: function () {
+                    Swal.fire('Error', 'No se pudo anular el préstamo.', 'error');
+                },
+            });
         });
     });
 
