@@ -2,189 +2,214 @@
 @extends("theme.$theme.layout")
 
 @section('titulo')
-    Pagos v2
+    Cobros / Ruta V2
 @endsection
 
-@section("styles")
-<link href="{{asset("assets/$theme/plugins/datatables-responsive/css/responsive.bootstrap4.min.css")}}" rel="stylesheet">
-<link href="{{asset("assets/$theme/plugins/datatables-bs4/css/dataTables.bootstrap4.css")}}" rel="stylesheet">
-<link href="{{asset("assets/css/select2-bootstrap.min.css")}}" rel="stylesheet">
-<link href="{{asset("assets/css/select2.min.css")}}" rel="stylesheet">
+@section('styles')
+<link href="{{ asset("assets/css/select2-bootstrap.min.css") }}" rel="stylesheet">
+<link href="{{ asset("assets/css/select2.min.css") }}" rel="stylesheet">
 @include('admin.v2._partials.mobile-styles')
 <style>
-/* ── V2 Layout ─────────────────────────────────────── */
-.v2-tab-nav .nav-link          { font-size: 12px; font-weight: 700; color: #495057; text-transform: uppercase; letter-spacing: .5px; }
-.v2-tab-nav .nav-link.active   { color: #007bff; border-bottom: 2px solid #007bff; }
-.v2-tab-nav .nav-link .badge   { font-size: 10px; vertical-align: middle; }
-
-/* ── Skeleton loader ───────────────────────────────── */
-.skeleton-row td { padding: 8px 12px; }
-.skeleton-cell   { height: 14px; border-radius: 4px; background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
-@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
-.skeleton-cell.w-80 { width: 80%; }
-.skeleton-cell.w-60 { width: 60%; }
-.skeleton-cell.w-40 { width: 40%; }
-
-/* ── Botones acción ────────────────────────────────── */
-.btn-card-action {
-    display: inline-flex; align-items: center; justify-content: center;
-    border-radius: 50px; font-size: 11px; font-weight: 700;
-    text-transform: uppercase; letter-spacing: .4px;
-    padding: 6px 14px; border: none; outline: none;
-    transition: transform .15s, box-shadow .15s;
-    box-shadow: 0 4px 10px rgba(0,0,0,.2);
+/* ── Layout principal ─────────────────────────────────────── */
+.v2-cal-wrap {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
 }
-.btn-card-action:hover  { transform: translateY(-1px); box-shadow: 0 6px 14px rgba(0,0,0,.25); }
-.btn-card-action:active { transform: translateY(0); }
-.btn-card-action i      { margin-right: 4px; }
+.v2-cal-main  { flex: 1; min-width: 0; }
+.v2-cal-panel { width: 340px; flex-shrink: 0; position: sticky; top: 70px; }
 
-/* ── Small box cliente ─────────────────────────────── */
-.client-card {
-    border-radius: 8px; overflow: hidden;
-    box-shadow: 0 2px 8px rgba(0,0,0,.15);
+/* ── Grid del calendario ──────────────────────────────────── */
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.cal-hdr {
+    text-align: center; font-size: 10px; font-weight: 700;
+    text-transform: uppercase; color: #6c757d;
+    padding: 4px 2px; letter-spacing: .5px;
 }
-.client-card .client-info    { padding: 10px 14px; font-size: 12px; line-height: 1.6; }
-.client-card .client-info h5 { margin: 0 0 4px; font-size: 14px; font-weight: 700; }
-.client-card .client-info p  { margin: 0; }
-.client-card .client-footer  { width: 100%; border-radius: 0; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+.cal-cell {
+    position: relative; min-height: 64px;
+    border: 1px solid #e9ecef; border-radius: 6px;
+    padding: 5px 4px 3px; cursor: pointer; background: #fff;
+    transition: background .12s, box-shadow .12s, border-color .12s;
+    user-select: none;
+}
+.cal-cell:hover           { background: #f8f9fa; border-color: #adb5bd; }
+.cal-cell.today           { border-color: #0d6efd; background: #e7f0ff; }
+.cal-cell.today .cal-dn   { color: #0d6efd; font-weight: 800; }
+.cal-cell.selected        { border-color: #0d6efd; background: #cfe2ff; box-shadow: 0 2px 8px rgba(13,110,253,.25); }
+.cal-cell.empty           { background: transparent; border-color: transparent; cursor: default; min-height: 64px; }
+.cal-dn  { font-size: 12px; font-weight: 700; color: #495057; line-height: 1; margin-bottom: 3px; }
+.cal-badges { display: flex; flex-wrap: wrap; gap: 2px; }
+.cb-p { background: #198754; color: #fff; font-size: 9px; padding: 1px 5px; border-radius: 20px; white-space: nowrap; }
+.cb-c { background: #fd7e14; color: #fff; font-size: 9px; padding: 1px 5px; border-radius: 20px; white-space: nowrap; }
+.cb-a { background: #dc3545; color: #fff; font-size: 9px; padding: 1px 5px; border-radius: 20px; white-space: nowrap; }
 
-/* ── Estado badges ─────────────────────────────────── */
-.badge-estado-C { background-color: #ffc107; color: #212529; }
-.badge-estado-P { background-color: #28a745; color: #fff; }
-.badge-estado-A { background-color: #dc3545; color: #fff; }
-.badge-estado-T { background-color: #17a2b8; color: #fff; }
+/* ── Panel lateral ────────────────────────────────────────── */
+.panel-hdr {
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    color: #fff; border-radius: 8px 8px 0 0; padding: 12px 14px;
+}
+.panel-hdr .ph-title { font-weight: 700; font-size: 14px; }
+.panel-hdr .ph-sub   { font-size: 11px; opacity: .85; margin-top: 2px; }
+.panel-body { max-height: calc(100vh - 260px); overflow-y: auto; padding: 8px; }
 
-/* ── Feedback inline ───────────────────────────────── */
+/* ── Cuota card ───────────────────────────────────────────── */
+.cuota-card {
+    border-radius: 8px; border-left: 4px solid #dee2e6;
+    background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    padding: 10px 12px; margin-bottom: 8px;
+    transition: box-shadow .12s;
+}
+.cuota-card:hover { box-shadow: 0 3px 8px rgba(0,0,0,.12); }
+.cuota-card.ec-C  { border-left-color: #fd7e14; }
+.cuota-card.ec-P  { border-left-color: #198754; opacity: .88; }
+.cuota-card.ec-A  { border-left-color: #dc3545; }
+.cuota-card.ec-T  { border-left-color: #0dcaf0; opacity: .82; }
+.cc-name  { font-weight: 700; font-size: 13px; color: #212529; }
+.cc-meta  { font-size: 11px; color: #6c757d; line-height: 1.5; }
+.cc-value { font-size: 15px; font-weight: 700; color: #212529; }
+
+/* ── Botones cuota ────────────────────────────────────────── */
+.btn-xs { font-size: 11px; padding: 3px 10px; border-radius: 20px; }
+
+/* ── Leyenda ──────────────────────────────────────────────── */
+.cal-legend { display: flex; align-items: center; gap: 8px; }
+.cal-legend span { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; }
+
+/* ── Feedback inline ──────────────────────────────────────── */
 .field-feedback { font-size: 11px; margin-top: 2px; display: none; }
 .field-feedback.show { display: block; }
-.is-valid   ~ .field-feedback { color: #28a745; }
-.is-invalid ~ .field-feedback { color: #dc3545; }
 
-/* ── Spinner de carga ──────────────────────────────── */
-.v2-spinner {
-    display: none; position: absolute; top: 50%; left: 50%;
-    transform: translate(-50%,-50%); z-index: 999;
+/* ── Responsive ───────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .v2-cal-wrap   { flex-direction: column; }
+    .v2-cal-panel  { width: 100%; position: static; }
+    .cal-cell      { min-height: 50px; }
+    .panel-body    { max-height: 300px; }
+    .cal-hdr       { font-size: 9px; padding: 3px 1px; }
 }
-.v2-spinner.active { display: block; }
 </style>
 @endsection
 
 @section('scripts')
-<script src="{{asset("assets/pages/scripts/admin/pagocalender/index.js")}}" type="text/javascript"></script>
+<script>
+window.CAL_BASE = '/admin/v2/pago-card';
+</script>
+<script src="{{ asset('assets/pages/scripts/admin/pagocalender/index.js') }}" type="text/javascript"></script>
 @endsection
 
 @section('contenido')
-<div class="row">
-  <div class="col-12">
 
-    {{-- ── Card principal con tabs ─────────────────────────── --}}
-    <div class="card card-primary card-tabs shadow-sm">
+{{-- ── Barra superior ─────────────────────────────────────────── --}}
+<div class="d-flex align-items-center justify-content-between flex-wrap mb-3" style="gap:8px">
 
-      {{-- Header: botón menú + tabs --}}
-      <div class="card-header p-0 pt-1 d-flex align-items-center">
+  {{-- Navegación de mes --}}
+  <div class="d-flex align-items-center">
+    <button id="btn-prev-mes" class="btn btn-sm btn-outline-secondary" title="Mes anterior">
+      <i class="fas fa-chevron-left"></i>
+    </button>
+    <h5 id="cal-titulo" class="mb-0 mx-3 font-weight-bold"
+        style="min-width:180px;text-align:center">Cargando...</h5>
+    <button id="btn-next-mes" class="btn btn-sm btn-outline-secondary" title="Mes siguiente">
+      <i class="fas fa-chevron-right"></i>
+    </button>
+    <button id="btn-hoy" class="btn btn-sm btn-outline-primary ml-2">Hoy</button>
+  </div>
 
-        {{-- Toggle sidebar --}}
-        <button class="btn btn-sm btn-link px-3 py-2" data-widget="pushmenu" aria-label="Abrir menú lateral">
-          <i class="fas fa-bars fa-lg" aria-hidden="true"></i>
-        </button>
-
-        {{-- Tabs --}}
-        <ul class="nav nav-tabs v2-tab-nav flex-grow-1" id="v2-tabs" role="tablist">
-
-          <li class="nav-item" role="presentation">
-            <a class="nav-link active" id="tab-pagos-link"
-               data-toggle="pill" href="#tab-pagos" role="tab"
-               aria-controls="tab-pagos" aria-selected="true">
-              <i class="fas fa-money-bill-wave" aria-hidden="true"></i>
-              Pagos
-            </a>
-          </li>
-
-          <li class="nav-item" role="presentation">
-            <a class="nav-link" id="tab-prestamos-link"
-               data-toggle="pill" href="#tab-prestamos" role="tab"
-               aria-controls="tab-prestamos" aria-selected="false">
-              <i class="fas fa-file-invoice-dollar" aria-hidden="true"></i>
-              Préstamos
-            </a>
-          </li>
-
-          <li class="nav-item" role="presentation">
-            <a class="nav-link" id="tab-clientes-link"
-               data-toggle="pill" href="#tab-clientes" role="tab"
-               aria-controls="tab-clientes" aria-selected="false">
-              <i class="fas fa-users" aria-hidden="true"></i>
-              Clientes
-            </a>
-          </li>
-
-          <li class="nav-item" role="presentation">
-            <a class="nav-link" id="tab-anulados-link"
-               data-toggle="pill" href="#tab-anulados" role="tab"
-               aria-controls="tab-anulados" aria-selected="false">
-              <i class="fas fa-ban" aria-hidden="true"></i>
-              Anulados
-            </a>
-          </li>
-
-        </ul>
-      </div>
-      {{-- /Header --}}
-
-      {{-- Tab content --}}
-      <div class="tab-content" id="v2-tabContent">
-
-        <div class="tab-pane fade show active" id="tab-pagos"
-             role="tabpanel" aria-labelledby="tab-pagos-link">
-          @include('admin.v2.pago_card.tab-pago')
-        </div>
-
-        <div class="tab-pane fade" id="tab-prestamos"
-             role="tabpanel" aria-labelledby="tab-prestamos-link">
-          @include('admin.v2.pago_card.tab-prestamos')
-        </div>
-
-        <div class="tab-pane fade" id="tab-clientes"
-             role="tabpanel" aria-labelledby="tab-clientes-link">
-          @include('admin.v2.pago_card.tab-clientes')
-        </div>
-
-        <div class="tab-pane fade" id="tab-anulados"
-             role="tabpanel" aria-labelledby="tab-anulados-link">
-          @include('admin.v2.pago_card.tab-anulados')
-        </div>
-
-      </div>
-      {{-- /Tab content --}}
-
+  {{-- Leyenda + acciones rápidas --}}
+  <div class="d-flex align-items-center flex-wrap" style="gap:6px">
+    <div class="cal-legend mr-2">
+      <span><span class="cb-p">P</span> Pagadas</span>
+      <span><span class="cb-c">C</span> Pendientes</span>
+      <span><span class="cb-a">A</span> Atrasadas</span>
     </div>
+    <button class="btn btn-sm btn-info" data-toggle="modal" data-target="#modal-u-cli">
+      <i class="fas fa-user-plus"></i> Cliente
+    </button>
+    <button class="btn btn-sm btn-success" data-toggle="modal" data-target="#modal-pc">
+      <i class="fas fa-file-invoice-dollar"></i> Préstamo
+    </button>
   </div>
 </div>
 
+{{-- ── Calendario + panel lateral ─────────────────────────────── --}}
+<div class="v2-cal-wrap">
 
-{{-- ════════════════════════════════════════════════════ --}}
-{{-- MODAL: Registrar / Editar pago                      --}}
-{{-- ════════════════════════════════════════════════════ --}}
+  {{-- Calendario --}}
+  <div class="v2-cal-main">
+    <div class="card shadow-sm mb-0">
+      <div class="card-body p-2">
+
+        {{-- Cabecera días de semana --}}
+        <div class="cal-grid mb-1">
+          @foreach(['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'] as $d)
+          <div class="cal-hdr">{{ $d }}</div>
+          @endforeach
+        </div>
+
+        {{-- Spinner mientras carga --}}
+        <div id="cal-loading" class="text-center py-5">
+          <i class="fas fa-spinner fa-spin fa-2x text-primary"></i>
+          <p class="text-muted mt-2 mb-0" style="font-size:12px">Cargando calendario...</p>
+        </div>
+
+        {{-- Grid generado por JS --}}
+        <div class="cal-grid" id="cal-grid" style="display:none"></div>
+
+      </div>
+    </div>
+  </div>
+
+  {{-- Panel lateral de cuotas --}}
+  <div class="v2-cal-panel">
+    <div class="card shadow-sm mb-0">
+
+      <div class="panel-hdr">
+        <div class="d-flex align-items-start justify-content-between">
+          <div>
+            <div class="ph-title" id="panel-title">Cobros del día</div>
+            <div class="ph-sub"   id="panel-subtitle">Selecciona un día del calendario</div>
+          </div>
+          <button id="btn-panel-close" class="btn btn-sm btn-light ml-2" style="display:none">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="panel-body" id="panel-body">
+        <div id="panel-placeholder" class="text-center py-4 text-muted">
+          <i class="fas fa-calendar-day fa-2x mb-2 d-block" style="color:#8b5cf6"></i>
+          <span style="font-size:13px">Toca un día del calendario<br>para ver las cuotas.</span>
+        </div>
+        <div id="panel-list" style="display:none"></div>
+      </div>
+
+    </div>
+  </div>
+
+</div>{{-- /v2-cal-wrap --}}
+
+
+{{-- ════════════════════════════════════════════════════════ --}}
+{{-- MODAL: Registrar / Editar pago                          --}}
+{{-- ════════════════════════════════════════════════════════ --}}
 <div class="modal fade" id="modal-pd" tabindex="-1"
      role="dialog" aria-labelledby="modal-pd-titulo" aria-modal="true"
      style="overflow-y:scroll">
   <div class="modal-dialog modal-xl" role="document">
     <div class="modal-content">
-
       <div class="card card-danger mb-0">
         <div class="card-header d-flex align-items-center">
           <h6 class="modal-title-pd mb-0 flex-grow-1" id="modal-pd-titulo"></h6>
           <button type="button" class="btn btn-sm btn-secondary ml-2"
-                  data-dismiss="modal" aria-label="Cerrar modal de pago">
-            <i class="fas fa-times" aria-hidden="true"></i> Cerrar
+                  data-dismiss="modal" aria-label="Cerrar">
+            <i class="fas fa-times"></i> Cerrar
           </button>
         </div>
         <span id="form_result" role="alert" aria-live="polite"></span>
       </div>
-
       <form id="form-general" name="form-general"
-            class="form-horizontal" method="post"
-            novalidate aria-label="Formulario de pago">
+            class="form-horizontal" method="post" novalidate>
         @csrf
         <div class="card-body">
           @include('admin.v2.pago_card.form-pago')
@@ -197,15 +222,14 @@
           </div>
         </div>
       </form>
-
     </div>
   </div>
 </div>
 
 
-{{-- ════════════════════════════════════════════════════ --}}
-{{-- MODAL: Detalle cuotas del préstamo                  --}}
-{{-- ════════════════════════════════════════════════════ --}}
+{{-- ════════════════════════════════════════════════════════ --}}
+{{-- MODAL: Detalle cuotas del préstamo                      --}}
+{{-- ════════════════════════════════════════════════════════ --}}
 <div class="modal fade" id="modal-d" tabindex="-1"
      role="dialog" aria-labelledby="modal-d-titulo" aria-modal="true">
   <div class="modal-dialog modal-xl" role="document">
@@ -213,16 +237,20 @@
       <div class="card mb-0">
         <div class="card-header d-flex align-items-center">
           <h6 class="modal-title-d mb-0 flex-grow-1" id="modal-d-titulo"></h6>
-          <button type="button" class="btn btn-sm btn-primary"
-                  data-dismiss="modal" aria-label="Cerrar detalle de cuotas">
-            <i class="fas fa-times" aria-hidden="true"></i> Cerrar
+          <button type="button" class="btn btn-sm btn-primary" data-dismiss="modal">
+            <i class="fas fa-times"></i> Cerrar
           </button>
         </div>
         <div class="card-body table-responsive p-2">
           <table id="detalleCuota"
                  class="table table-sm table-striped table-bordered text-nowrap"
-                 style="width:100%"
-                 aria-label="Detalle de cuotas del préstamo">
+                 style="width:100%">
+            <thead class="thead-light">
+              <tr>
+                <th># Cuota</th><th>Valor</th><th>Fecha</th><th>Pagado</th><th>Estado</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
           </table>
         </div>
       </div>
@@ -231,9 +259,9 @@
 </div>
 
 
-{{-- ════════════════════════════════════════════════════ --}}
-{{-- MODAL: Detalle de pagos realizados                  --}}
-{{-- ════════════════════════════════════════════════════ --}}
+{{-- ════════════════════════════════════════════════════════ --}}
+{{-- MODAL: Historial de pagos del crédito                   --}}
+{{-- ════════════════════════════════════════════════════════ --}}
 <div class="modal fade" id="modal-dp" tabindex="-1"
      role="dialog" aria-labelledby="modal-dp-titulo" aria-modal="true">
   <div class="modal-dialog modal-xl" role="document">
@@ -250,9 +278,9 @@
 </div>
 
 
-{{-- ════════════════════════════════════════════════════ --}}
-{{-- MODAL: Adelanto de cuotas                           --}}
-{{-- ════════════════════════════════════════════════════ --}}
+{{-- ════════════════════════════════════════════════════════ --}}
+{{-- MODAL: Adelanto de cuotas                               --}}
+{{-- ════════════════════════════════════════════════════════ --}}
 <div class="modal fade" id="modal-acuotas" tabindex="-1"
      role="dialog" aria-labelledby="modal-acuotas-titulo" aria-modal="true"
      style="overflow-y:scroll">
@@ -261,25 +289,16 @@
       <div class="card mb-0">
         <div class="card-header d-flex align-items-center">
           <h6 class="modal-title-acuotas mb-0 flex-grow-1" id="modal-acuotas-titulo"></h6>
-          <button type="button" class="btn btn-sm btn-primary"
-                  data-dismiss="modal" aria-label="Cerrar modal de adelanto de cuotas">
-            <i class="fas fa-times" aria-hidden="true"></i> Cerrar
+          <button type="button" class="btn btn-sm btn-primary" data-dismiss="modal">
+            <i class="fas fa-times"></i> Cerrar
           </button>
         </div>
         <div class="card-body table-responsive p-2">
-          <table id="pagoa"
-                 class="table table-hover table-sm responsive"
-                 style="width:100%"
-                 aria-label="Tabla de adelanto de cuotas">
+          <table id="pagoa" class="table table-hover table-sm responsive" style="width:100%">
             <thead class="thead-light">
               <tr>
-                <th scope="col">Acciones</th>
-                <th scope="col"># Cuota</th>
-                <th scope="col">Fecha</th>
-                <th scope="col">Estado</th>
-                <th scope="col">Nombres</th>
-                <th scope="col">Apellidos</th>
-                <th scope="col">Id Préstamo</th>
+                <th>Acciones</th><th># Cuota</th><th>Fecha</th>
+                <th>Estado</th><th>Nombres</th><th>Apellidos</th><th>Id Crédito</th>
               </tr>
             </thead>
             <tbody></tbody>
@@ -291,9 +310,9 @@
 </div>
 
 
-{{-- ════════════════════════════════════════════════════ --}}
-{{-- MODAL: Cuotas atrasadas                             --}}
-{{-- ════════════════════════════════════════════════════ --}}
+{{-- ════════════════════════════════════════════════════════ --}}
+{{-- MODAL: Cuotas atrasadas                                 --}}
+{{-- ════════════════════════════════════════════════════════ --}}
 <div class="modal fade" id="modal-atrasosp" tabindex="-1"
      role="dialog" aria-labelledby="modal-atrasosp-titulo" aria-modal="true"
      style="overflow-y:scroll">
@@ -302,25 +321,16 @@
       <div class="card mb-0">
         <div class="card-header d-flex align-items-center">
           <h6 class="modal-title-atrasosp mb-0 flex-grow-1" id="modal-atrasosp-titulo"></h6>
-          <button type="button" class="btn btn-sm btn-danger"
-                  data-dismiss="modal" aria-label="Cerrar modal de atrasos">
-            <i class="fas fa-times" aria-hidden="true"></i> Cerrar
+          <button type="button" class="btn btn-sm btn-danger" data-dismiss="modal">
+            <i class="fas fa-times"></i> Cerrar
           </button>
         </div>
         <div class="card-body table-responsive p-2">
-          <table id="atrasosp"
-                 class="table table-hover table-sm responsive"
-                 style="width:100%"
-                 aria-label="Tabla de cuotas atrasadas">
+          <table id="atrasosp" class="table table-hover table-sm responsive" style="width:100%">
             <thead class="thead-light">
               <tr>
-                <th scope="col">Acciones</th>
-                <th scope="col"># Cuota</th>
-                <th scope="col">Fecha</th>
-                <th scope="col">Estado</th>
-                <th scope="col">Nombres</th>
-                <th scope="col">Apellidos</th>
-                <th scope="col">Id Préstamo</th>
+                <th>Acciones</th><th># Cuota</th><th>Fecha</th>
+                <th>Estado</th><th>Nombres</th><th>Apellidos</th><th>Id Crédito</th>
               </tr>
             </thead>
             <tbody></tbody>
@@ -332,9 +342,9 @@
 </div>
 
 
-{{-- ════════════════════════════════════════════════════ --}}
-{{-- MODAL: Crear cliente                                --}}
-{{-- ════════════════════════════════════════════════════ --}}
+{{-- ════════════════════════════════════════════════════════ --}}
+{{-- MODAL: Crear cliente                                    --}}
+{{-- ════════════════════════════════════════════════════════ --}}
 <div class="modal fade" id="modal-u-cli" tabindex="-1"
      role="dialog" aria-labelledby="modal-cli-titulo" aria-modal="true"
      style="overflow-y:scroll">
@@ -343,22 +353,20 @@
       <div class="card card-info mb-0">
         <div class="card-header d-flex align-items-center">
           <h6 class="mb-0 flex-grow-1" id="modal-cli-titulo">
-            <i class="fas fa-user-plus" aria-hidden="true"></i> Crear Cliente
+            <i class="fas fa-user-plus"></i> Crear Cliente
           </h6>
-          <button type="button" class="btn btn-sm btn-secondary"
-                  data-dismiss="modal" aria-label="Cerrar modal de cliente">
-            <i class="fas fa-times" aria-hidden="true"></i> Cerrar
+          <button type="button" class="btn btn-sm btn-secondary" data-dismiss="modal">
+            <i class="fas fa-times"></i> Cerrar
           </button>
         </div>
-        <form id="form-cli" class="form-horizontal" method="post"
-              novalidate aria-label="Formulario crear cliente">
+        <form id="form-cli" class="form-horizontal" method="post" novalidate>
           @csrf
           <div class="card-body">
             @include('admin.v2.pago_card.form-cli')
           </div>
           <div class="card-footer text-right">
             <button type="submit" class="btn btn-info">
-              <i class="fas fa-save" aria-hidden="true"></i> Guardar cliente
+              <i class="fas fa-save"></i> Guardar cliente
             </button>
           </div>
         </form>
@@ -368,9 +376,9 @@
 </div>
 
 
-{{-- ════════════════════════════════════════════════════ --}}
-{{-- MODAL: Crear préstamo                               --}}
-{{-- ════════════════════════════════════════════════════ --}}
+{{-- ════════════════════════════════════════════════════════ --}}
+{{-- MODAL: Crear préstamo                                   --}}
+{{-- ════════════════════════════════════════════════════════ --}}
 <div class="modal fade" id="modal-pc" tabindex="-1"
      role="dialog" aria-labelledby="modal-pc-titulo" aria-modal="true"
      style="overflow-y:scroll">
@@ -379,22 +387,20 @@
       <div class="card card-success mb-0">
         <div class="card-header d-flex align-items-center">
           <h6 class="mb-0 flex-grow-1" id="modal-pc-titulo">
-            <i class="fas fa-file-invoice-dollar" aria-hidden="true"></i> Crear Préstamo
+            <i class="fas fa-file-invoice-dollar"></i> Crear Préstamo
           </h6>
-          <button type="button" class="btn btn-sm btn-secondary"
-                  data-dismiss="modal" aria-label="Cerrar modal de préstamo">
-            <i class="fas fa-times" aria-hidden="true"></i> Cerrar
+          <button type="button" class="btn btn-sm btn-secondary" data-dismiss="modal">
+            <i class="fas fa-times"></i> Cerrar
           </button>
         </div>
-        <form id="form-prestamo" class="form-horizontal" method="post"
-              novalidate aria-label="Formulario crear préstamo">
+        <form id="form-prestamo" class="form-horizontal" method="post" novalidate>
           @csrf
           <div class="card-body">
             @include('admin.v2.pago_card.form-prestamo')
           </div>
           <div class="card-footer text-right">
             <button type="submit" class="btn btn-success">
-              <i class="fas fa-save" aria-hidden="true"></i> Guardar préstamo
+              <i class="fas fa-save"></i> Guardar préstamo
             </button>
           </div>
         </form>
@@ -402,4 +408,5 @@
     </div>
   </div>
 </div>
+
 @endsection
