@@ -192,7 +192,7 @@ $(function () {
         language: ES, processing:true, responsive:true,
         order:[[1,'asc']], lengthMenu:[[25,50,100,-1],[25,50,100,'Todo']],
         dom:'<"row"<"col-6"l><"col-6"f>>rt<"row"<"col-7"i><"col-5"p>>',
-        ajax: { url: AJAX_URL },
+        ajax: { url: AJAX_URL, headers: { 'X-Requested-With': 'XMLHttpRequest' } },
         columns: [
             { data:'action',         orderable:false, searchable:false },
             { data:'consecutivo' }, { data:'nombres' },  { data:'apellidos' },

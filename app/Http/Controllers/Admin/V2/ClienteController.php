@@ -54,7 +54,7 @@ class ClienteController extends Controller
 
         $datas = collect(); // evita variable indefinida en la vista
 
-        if ($request->ajax()) {
+        if ($request->ajax() || $request->has('draw')) {
             $datas = Cliente::where('usuario_id', '=', $id_usuario)
                 ->orderBy('usuario_id')
                 ->orderBy('consecutivo')

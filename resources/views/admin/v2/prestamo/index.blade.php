@@ -268,7 +268,6 @@
     </div>
   </div>
 </div>
-@endsection
 
 
 {{-- ════════════════════════════════════════════════════ --}}
@@ -362,6 +361,7 @@
     </div>
   </div>
 </div>
+@endsection
 
 @section('scriptsPlugins')
 <script src="{{asset("assets/$theme/plugins/datatables/jquery.dataTables.js")}}"></script>
@@ -381,5 +381,5 @@
     window.V2_REFI_URL      = "{{ route('admin.v2.prestamo.refiguardar') }}";
     window.V2_CSRF          = "{{ csrf_token() }}";
 </script>
-<script src="{{asset("assets/pages/scripts/admin/prestamo/v2.js")}}" defer></script>
+<script src="{{asset("assets/pages/scripts/admin/prestamo/v2.js")}}"></script>
 @endsection

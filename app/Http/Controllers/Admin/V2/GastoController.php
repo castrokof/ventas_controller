@@ -35,7 +35,7 @@ class GastoController extends Controller
         $rol_id     = $request->session()->get('rol_id');
         $usuario_id = $request->session()->get('usuario_id');
 
-        if ($request->ajax()) {
+        if ($request->ajax() || $request->has('draw')) {
             $query = DB::table('gasto')
                 ->join('usuario', 'gasto.usuario_id', '=', 'usuario.id')
                 ->select(

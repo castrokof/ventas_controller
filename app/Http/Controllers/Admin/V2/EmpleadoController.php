@@ -48,7 +48,7 @@ class EmpleadoController extends Controller
         // Empresas disponibles para el select del formulario
         $empresa = Empresa::orderBy('id')->pluck('id', 'nombre')->toArray();
 
-        if ($request->ajax()) {
+        if ($request->ajax() || $request->has('draw')) {
 
             if ($rol_id == 1) {
                 // Superadmin: ve todos los empleados
