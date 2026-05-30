@@ -676,6 +676,94 @@ class PagoController extends Controller
     }
 
     // ──────────────────────────────────────────────────────────────────────
+    // CALENDARIO
+    // ──────────────────────────────────────────────────────────────────────
+
+    /**
+     * Conteo de cuotas por día para el mes solicitado.
+     * GET /admin/v2/pago-card/calendario?mes=5&anio=2026
+     */
+    public function calendario(Request $request): JsonResponse
+    {
+        if (!$request->ajax()) abort(403);
+        $uid  = $request->session()->get('usuario_id');
+        $mes  = (int) ($request->mes  ?? Carbon::today()->month);
+        $anio = (int) ($request->anio ?? Carbon::today()->year);
+
+        $inicio = sprintf('%04d-%02d-01', $anio, $mes);
+        $fin    = Carbon::createFromDate($anio, $mes, 1)->endOfMonth()->toDateString();
+
+        $rows = DB::table('detalle_prestamo')
+            ->join('prestamo', 'detalle_prestamo.prestamo_id', '=', 'prestamo.idp')
+            ->where('prestamo.usuario_id', $uid)
+            ->whereNull('prestamo.delete_at')
+            ->whereBetween('detalle_prestamo.fecha_cuota', [$inicio, $fin])
+            ->select(
+                'detalle_prestamo.fecha_cuota',
+                'detalle_prestamo.estado',
+                DB::raw('COUNT(*) as total'),
+                DB::raw('SUM(detalle_prestamo.valor_cuota) as monto')
+            )
+            ->groupBy('detalle_prestamo.fecha_cuota', 'detalle_prestamo.estado')
+            ->get();
+
+        $dias = [];
+        foreach ($rows as $r) {
+            $f = $r->fecha_cuota;
+            if (!isset($dias[$f])) {
+                $dias[$f] = ['pagadas' => 0, 'pendientes' => 0, 'atrasadas' => 0, 'monto' => 0];
+            }
+            if (in_array($r->estado, ['P', 'T'])) {
+                $dias[$f]['pagadas'] += $r->total;
+            } elseif ($r->estado === 'C') {
+                $dias[$f]['pendientes'] += $r->total;
+            } elseif ($r->estado === 'A') {
+                $dias[$f]['atrasadas'] += $r->total;
+            }
+            $dias[$f]['monto'] += $r->monto;
+        }
+
+        return response()->json(['result' => $dias]);
+    }
+
+    /**
+     * Cuotas de un día específico con info del cliente.
+     * GET /admin/v2/pago-card/dia?fecha=2026-05-30
+     */
+    public function cuotasDia(Request $request): JsonResponse
+    {
+        if (!$request->ajax()) abort(403);
+        $uid   = $request->session()->get('usuario_id');
+        $fecha = $request->fecha ?? $this->hoy();
+
+        $rows = DB::table('detalle_prestamo')
+            ->join('prestamo', 'detalle_prestamo.prestamo_id', '=', 'prestamo.idp')
+            ->join('cliente',  'prestamo.cliente_id',          '=', 'cliente.id')
+            ->where('prestamo.usuario_id', $uid)
+            ->whereNull('prestamo.delete_at')
+            ->where('detalle_prestamo.fecha_cuota', $fecha)
+            ->select(
+                'detalle_prestamo.idd',
+                'detalle_prestamo.d_numero_cuota',
+                'detalle_prestamo.valor_cuota',
+                'detalle_prestamo.valor_cuota_pagada',
+                'detalle_prestamo.estado',
+                'detalle_prestamo.prestamo_id',
+                'cliente.nombres',
+                'cliente.apellidos',
+                'cliente.celular',
+                'prestamo.monto_atrasado',
+                'prestamo.cuotas_atrasadas',
+                'prestamo.tipo_pago',
+                'prestamo.idp'
+            )
+            ->orderByRaw("FIELD(detalle_prestamo.estado, 'A', 'C', 'P', 'T')")
+            ->get();
+
+        return response()->json(['result' => $rows]);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
     // CONSULTAS AJAX
     // ──────────────────────────────────────────────────────────────────────
 

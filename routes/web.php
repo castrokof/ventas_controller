@@ -227,6 +227,8 @@ Route::prefix('admin/v2')
     Route::get('pago-card/atrasos',       'PagoController@indexAtrasosp')    ->name('pago_card.atrasos');
     Route::get('pago-card/registrados',   'PagoController@indexRegistrados') ->name('pago_card.registrados');
     Route::get('pago-card/pagonow',       'PagoController@indexPagonow')     ->name('pago_card.pagonow');
+    Route::get('pago-card/calendario',    'PagoController@calendario')       ->name('pago_card.calendario');
+    Route::get('pago-card/dia',           'PagoController@cuotasDia')        ->name('pago_card.dia');
 
     /* Endpoints AJAX — comodines {id} */
     Route::get('pago-card/{id}/edit',    'PagoController@editar')   ->name('pago_card.editar');
