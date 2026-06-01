@@ -670,100 +670,115 @@ function cargarCuotasDia(fecha) {
     $('#panel-no-results').hide();
     $('#resumen-bar').hide();
 
-    $.get(BASE_PC + '/dia', { fecha: fecha }, function (data) {
-        var cuotas = data.result || [];
+    $.ajax({
+        url:      BASE_PC + '/dia',
+        method:   'GET',
+        data:     { fecha: fecha },
+        dataType: 'json',
+        success: function (data) {
+            try {
+                var cuotas = ((data || {}).result) || [];
 
-        var nPen  = cuotas.filter(function (c) { return c.estado === 'C'; }).length;
-        var nAtr  = cuotas.filter(function (c) { return c.estado === 'A'; }).length;
-        var nPag  = cuotas.filter(function (c) { return c.estado === 'P' || c.estado === 'T'; }).length;
-        var monto = cuotas
-            .filter(function (c) { return c.estado === 'C' || c.estado === 'A'; })
-            .reduce(function (acc, c) { return acc + parseFloat(c.valor_cuota || 0); }, 0);
+                var nPen  = cuotas.filter(function (c) { return c.estado === 'C'; }).length;
+                var nAtr  = cuotas.filter(function (c) { return c.estado === 'A'; }).length;
+                var nPag  = cuotas.filter(function (c) { return c.estado === 'P' || c.estado === 'T'; }).length;
+                var monto = cuotas
+                    .filter(function (c) { return c.estado === 'C' || c.estado === 'A'; })
+                    .reduce(function (acc, c) { return acc + parseFloat(c.valor_cuota || 0); }, 0);
 
-        $('#res-pend').text(nPen);
-        $('#res-atra').text(nAtr);
-        $('#res-pago').text(nPag);
-        $('#res-monto').text('$' + monto.toLocaleString('es-CO'));
-        $('#resumen-bar').show();
+                $('#res-pend').text(nPen);
+                $('#res-atra').text(nAtr);
+                $('#res-pago').text(nPag);
+                $('#res-monto').text('$' + monto.toLocaleString('es-CO'));
+                $('#resumen-bar').show();
 
-        if (cuotas.length === 0) {
-            $('#panel-empty').show();
-            return;
+                if (cuotas.length === 0) {
+                    $('#panel-empty').show();
+                    return;
+                }
+
+                var estadoBadges = {
+                    C: '<span class="badge badge-warning">Pendiente</span>',
+                    P: '<span class="badge badge-success">Pagada</span>',
+                    A: '<span class="badge badge-danger">Atrasada</span>',
+                    T: '<span class="badge badge-info">Cancelada</span>',
+                };
+
+                var html = '';
+                cuotas.forEach(function (c) {
+                    var esPagada = c.estado === 'P' || c.estado === 'T';
+                    var badge    = estadoBadges[c.estado] || c.estado;
+                    var valor    = parseFloat(c.valor_cuota || 0).toLocaleString('es-CO');
+
+                    var btnPagar = '<button class="btn btn-xs btn-success cal-pay" data-idd="' + c.idd + '">'
+                                 + '<i class="fas fa-money-bill-wave"></i> Pagar</button>';
+                    var btnEditar = '<button class="btn btn-xs btn-outline-primary cal-edit" data-idd="' + c.idd + '">'
+                                  + '<i class="far fa-edit"></i> Editar</button>';
+                    var btnDetalle = '<button class="btn btn-xs btn-outline-secondary cal-detalle ml-1" data-idp="' + c.idp + '">'
+                                   + '<i class="fas fa-list-ul"></i></button>';
+                    var btnHistorial = '<button class="btn btn-xs btn-outline-info cal-historial ml-1" data-idp="' + c.idp + '">'
+                                     + '<i class="fas fa-history"></i></button>';
+
+                    var alertaAtraso = (c.cuotas_atrasadas > 0)
+                        ? '<small class="text-danger"><i class="fas fa-exclamation-triangle"></i> '
+                          + c.cuotas_atrasadas + ' atraso(s)</small>'
+                        : '';
+
+                    var yaSel     = selMasivo && !!seleccionIds[c.idd];
+                    var checkHtml = selMasivo && !esPagada
+                        ? '<input type="checkbox" class="cuota-check" data-idd="' + c.idd + '"'
+                          + (yaSel ? ' checked' : '') + '>'
+                        : '';
+
+                    html += '<div class="cuota-card ec-' + c.estado + (yaSel ? ' seleccionada' : '') + '"'
+                          + ' data-search="' + (escHtml(c.nombres) + ' ' + escHtml(c.apellidos) + ' ' + c.idp + ' ' + c.d_numero_cuota).toLowerCase() + '"'
+                          + ' data-estado="' + c.estado + '"'
+                          + ' data-nombre="' + escHtml(c.nombres + ' ' + c.apellidos) + '"'
+                          + ' data-cuota="' + c.d_numero_cuota + '"'
+                          + ' data-fecha="' + escHtml(c.fecha_cuota || '') + '">'
+                          + '  <div class="d-flex align-items-start justify-content-between">'
+                          + '    ' + checkHtml
+                          + '    <div style="flex:1;min-width:0">'
+                          + '      <div class="cc-name text-truncate">' + escHtml(c.nombres) + ' ' + escHtml(c.apellidos) + '</div>'
+                          + '      <div class="cc-meta">Crédito #' + c.idp + ' · Cuota #' + c.d_numero_cuota + '</div>'
+                          + '      <div class="cc-meta">' + escHtml(c.tipo_pago || '') + '</div>'
+                          + '    </div>'
+                          + '    <div class="text-right ml-2" style="flex-shrink:0">'
+                          + '      <div class="cc-value">$' + valor + '</div>'
+                          + '      ' + badge
+                          + '    </div>'
+                          + '  </div>'
+                          + (selMasivo ? '' :
+                               '  <div class="d-flex justify-content-between align-items-center mt-2">'
+                             + '    <div>' + alertaAtraso + '</div>'
+                             + '    <div>'
+                             + (esPagada ? btnEditar : btnPagar)
+                             + btnDetalle + btnHistorial
+                             + '    </div>'
+                             + '  </div>'
+                            )
+                          + '</div>';
+                });
+
+                $('#panel-list').html(html);
+                resetFiltros();
+
+            } catch (e) {
+                $('#panel-list').html(
+                    '<p class="text-center text-danger py-3">'
+                  + '<i class="fas fa-exclamation-circle"></i> Error al procesar los datos.</p>'
+                );
+            }
+        },
+        error: function () {
+            $('#panel-list').html(
+                '<p class="text-center text-danger py-3">'
+              + '<i class="fas fa-exclamation-circle"></i> No se pudieron cargar las cuotas.</p>'
+            );
+        },
+        complete: function () {
+            $('#cuotas-loading').hide();
         }
-
-        var estadoBadges = {
-            C: '<span class="badge badge-warning">Pendiente</span>',
-            P: '<span class="badge badge-success">Pagada</span>',
-            A: '<span class="badge badge-danger">Atrasada</span>',
-            T: '<span class="badge badge-info">Cancelada</span>',
-        };
-
-        var html = '';
-        cuotas.forEach(function (c) {
-            var esPagada = c.estado === 'P' || c.estado === 'T';
-            var badge    = estadoBadges[c.estado] || c.estado;
-            var valor    = parseFloat(c.valor_cuota).toLocaleString('es-CO');
-
-            var btnPagar = '<button class="btn btn-xs btn-success cal-pay" data-idd="' + c.idd + '">'
-                         + '<i class="fas fa-money-bill-wave"></i> Pagar</button>';
-            var btnEditar = '<button class="btn btn-xs btn-outline-primary cal-edit" data-idd="' + c.idd + '">'
-                          + '<i class="far fa-edit"></i> Editar</button>';
-            var btnDetalle = '<button class="btn btn-xs btn-outline-secondary cal-detalle ml-1" data-idp="' + c.idp + '">'
-                           + '<i class="fas fa-list-ul"></i></button>';
-            var btnHistorial = '<button class="btn btn-xs btn-outline-info cal-historial ml-1" data-idp="' + c.idp + '">'
-                             + '<i class="fas fa-history"></i></button>';
-
-            var alertaAtraso = (c.cuotas_atrasadas > 0)
-                ? '<small class="text-danger"><i class="fas fa-exclamation-triangle"></i> '
-                  + c.cuotas_atrasadas + ' atraso(s)</small>'
-                : '';
-
-            var yaSel     = selMasivo && !!seleccionIds[c.idd];
-            var checkHtml = selMasivo && !esPagada
-                ? '<input type="checkbox" class="cuota-check" data-idd="' + c.idd + '"'
-                  + (yaSel ? ' checked' : '') + '>'
-                : '';
-
-            html += '<div class="cuota-card ec-' + c.estado + (yaSel ? ' seleccionada' : '') + '"'
-                  + ' data-search="' + (escHtml(c.nombres) + ' ' + escHtml(c.apellidos) + ' ' + c.idp + ' ' + c.d_numero_cuota).toLowerCase() + '"'
-                  + ' data-estado="' + c.estado + '"'
-                  + ' data-nombre="' + escHtml(c.nombres + ' ' + c.apellidos) + '"'
-                  + ' data-cuota="' + c.d_numero_cuota + '"'
-                  + ' data-fecha="' + escHtml(c.fecha_cuota || '') + '">'
-                  + '  <div class="d-flex align-items-start justify-content-between">'
-                  + '    ' + checkHtml
-                  + '    <div style="flex:1;min-width:0">'
-                  + '      <div class="cc-name text-truncate">' + escHtml(c.nombres) + ' ' + escHtml(c.apellidos) + '</div>'
-                  + '      <div class="cc-meta">Crédito #' + c.idp + ' · Cuota #' + c.d_numero_cuota + '</div>'
-                  + '      <div class="cc-meta">' + escHtml(c.tipo_pago || '') + '</div>'
-                  + '    </div>'
-                  + '    <div class="text-right ml-2" style="flex-shrink:0">'
-                  + '      <div class="cc-value">$' + valor + '</div>'
-                  + '      ' + badge
-                  + '    </div>'
-                  + '  </div>'
-                  + (selMasivo ? '' :
-                       '  <div class="d-flex justify-content-between align-items-center mt-2">'
-                     + '    <div>' + alertaAtraso + '</div>'
-                     + '    <div>'
-                     + (esPagada ? btnEditar : btnPagar)
-                     + btnDetalle + btnHistorial
-                     + '    </div>'
-                     + '  </div>'
-                    )
-                  + '</div>';
-        });
-
-        $('#panel-list').html(html);
-        resetFiltros();
-
-    }).fail(function () {
-        $('#panel-list').html(
-            '<p class="text-center text-danger py-3">'
-          + '<i class="fas fa-exclamation-circle"></i> No se pudieron cargar las cuotas.</p>'
-        );
-    }).always(function () {
-        $('#cuotas-loading').hide();
     });
 }
 
