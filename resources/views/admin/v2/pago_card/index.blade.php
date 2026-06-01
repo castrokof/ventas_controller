@@ -106,6 +106,30 @@ body.sel-masivo-on { padding-bottom:62px; }
     .fecha-bar .fecha-label { font-size:.9rem; }
     .barra-acciones .btn   { padding:4px 8px; font-size:12px; }
 }
+
+/* ── Modal cuotas del préstamo ─────────────────────── */
+.cc-info-link { cursor:pointer; }
+.cc-info-link:hover .cc-name { color:#6366f1; text-decoration:underline; }
+
+.mcp-row {
+    display:flex; align-items:center; gap:8px;
+    padding:7px 10px; border-radius:7px; margin-bottom:5px;
+    border-left:3px solid #dee2e6; background:#fff;
+    box-shadow:0 1px 3px rgba(0,0,0,.06); font-size:12px;
+}
+.mcp-row.ec-C { border-left-color:#fd7e14; }
+.mcp-row.ec-A { border-left-color:#dc3545; }
+.mcp-row.ec-P { border-left-color:#198754; opacity:.85; }
+.mcp-row.ec-T { border-left-color:#0dcaf0; opacity:.75; }
+.mcp-row.mcp-sel { outline:2px solid #ffc107; background:#fffde7; }
+.mcp-date  { min-width:58px; color:#6c757d; }
+.mcp-num   { min-width:44px; color:#6c757d; }
+.mcp-val   { font-weight:700; color:#212529; margin-left:auto; }
+.mcp-check { width:16px; height:16px; cursor:pointer; flex-shrink:0; }
+#mcp-progreso {
+    background:#f8f9fa; border-radius:8px; padding:10px;
+    text-align:center; font-size:13px; margin-bottom:6px; display:none;
+}
 </style>
 @endsection
 
@@ -504,6 +528,97 @@ window.CAL_BASE = '{{ url("admin/v2/pago-card") }}';
           <i class="fas fa-check mr-1"></i>Aplicar
         </button>
       </div>
+    </div>
+  </div>
+</div>
+
+
+{{-- ════════════════════════════════════════════════════════ --}}
+{{-- MODAL: Calendario de cuotas del préstamo (adelantos)    --}}
+{{-- ════════════════════════════════════════════════════════ --}}
+<div class="modal fade" id="modal-cuotas-prestamo" tabindex="-1"
+     role="dialog" aria-labelledby="mcp-titulo-id" aria-modal="true"
+     style="overflow-y:scroll">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+
+      {{-- Header --}}
+      <div class="modal-header py-2"
+           style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff">
+        <div>
+          <h6 class="mb-0 font-weight-bold" id="mcp-titulo-id">
+            <span id="mcp-titulo">Cuotas del crédito</span>
+          </h6>
+          <small id="mcp-subtitulo" style="opacity:.85;font-size:11px"></small>
+        </div>
+        <button type="button" class="close text-white ml-2" data-dismiss="modal">
+          <span>&times;</span>
+        </button>
+      </div>
+
+      {{-- Body --}}
+      <div class="modal-body p-2">
+
+        {{-- Cargando --}}
+        <div id="mcp-loading" class="text-center py-4">
+          <i class="fas fa-spinner fa-spin fa-2x text-primary"></i>
+        </div>
+
+        {{-- Contenido (oculto hasta cargar) --}}
+        <div id="mcp-content" style="display:none">
+
+          {{-- Mini calendario del préstamo --}}
+          <div class="card shadow-sm mb-2">
+            <div class="card-body p-2">
+              <div class="d-flex align-items-center justify-content-between mb-1">
+                <button id="mcp-prev-mes" class="btn btn-sm btn-outline-secondary">
+                  <i class="fas fa-chevron-left"></i>
+                </button>
+                <span id="mcp-cal-titulo" class="font-weight-bold" style="font-size:.85rem"></span>
+                <button id="mcp-next-mes" class="btn btn-sm btn-outline-secondary">
+                  <i class="fas fa-chevron-right"></i>
+                </button>
+              </div>
+              <div class="cal-grid mb-1">
+                @foreach(['L','M','X','J','V','S','D'] as $d)
+                <div class="cal-hdr">{{ $d }}</div>
+                @endforeach
+              </div>
+              <div class="cal-grid" id="mcp-cal-grid"></div>
+            </div>
+          </div>
+
+          {{-- Filtros --}}
+          <div class="panel-filters mb-1">
+            <button class="filter-btn fb-all active" data-mcp-filter="all">Todas</button>
+            <button class="filter-btn fb-pend" data-mcp-filter="C">Pendiente</button>
+            <button class="filter-btn fb-atra" data-mcp-filter="A">Atrasada</button>
+            <button class="filter-btn fb-pago" data-mcp-filter="P">Pagada</button>
+          </div>
+          <p id="mcp-dia-lbl" class="text-muted mb-1" style="font-size:11px;display:none">
+            <i class="fas fa-filter mr-1"></i><span></span>
+            <a href="#" id="mcp-limpiar-dia" class="ml-1">Quitar filtro</a>
+          </p>
+
+          {{-- Progreso pago --}}
+          <div id="mcp-progreso"></div>
+
+          {{-- Lista de cuotas --}}
+          <div id="mcp-lista"></div>
+
+        </div>
+      </div>
+
+      {{-- Footer --}}
+      <div class="modal-footer py-2 justify-content-between" id="mcp-footer" style="display:none">
+        <span id="mcp-sel-info" class="text-muted" style="font-size:12px">
+          Selecciona cuotas futuras para pagar
+        </span>
+        <button id="btn-mcp-pagar" class="btn btn-sm btn-success font-weight-bold" disabled>
+          <i class="fas fa-money-bill-wave mr-1"></i>Pagar seleccionadas
+        </button>
+      </div>
+
     </div>
   </div>
 </div>
