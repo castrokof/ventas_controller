@@ -726,6 +726,41 @@ class PagoController extends Controller
     }
 
     /**
+     * Cambia la fecha_cuota de múltiples cuotas en bloque.
+     * POST /admin/v2/pago-card/cambiar-fechas
+     */
+    public function cambiarFechasMasivo(Request $request): JsonResponse
+    {
+        $uid        = $request->session()->get('usuario_id');
+        $ids        = array_map('intval', (array) ($request->ids ?? []));
+        $nuevaFecha = $request->nueva_fecha ?? '';
+
+        if (empty($ids) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $nuevaFecha)) {
+            return response()->json(['success' => false, 'msg' => 'Datos incompletos o fecha inválida']);
+        }
+
+        // Solo cuotas del usuario actual, no pagadas, préstamo vigente
+        $validIds = DB::table('detalle_prestamo')
+            ->join('prestamo', 'detalle_prestamo.prestamo_id', '=', 'prestamo.idp')
+            ->where('prestamo.usuario_id', $uid)
+            ->whereIn('detalle_prestamo.idd', $ids)
+            ->whereIn('detalle_prestamo.estado', ['C', 'A'])
+            ->whereNull('prestamo.delete_at')
+            ->pluck('detalle_prestamo.idd')
+            ->toArray();
+
+        if (empty($validIds)) {
+            return response()->json(['success' => false, 'msg' => 'No hay cuotas válidas para actualizar']);
+        }
+
+        DB::table('detalle_prestamo')
+            ->whereIn('idd', $validIds)
+            ->update(['fecha_cuota' => $nuevaFecha, 'updated_at' => now()]);
+
+        return response()->json(['success' => true, 'actualizadas' => count($validIds)]);
+    }
+
+    /**
      * Cuotas de un día específico con info del cliente.
      * GET /admin/v2/pago-card/dia?fecha=2026-05-30
      */

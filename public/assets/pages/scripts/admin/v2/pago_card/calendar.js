@@ -45,6 +45,74 @@ let calData    = {};   // {fecha: {pagadas, pendientes, atrasadas, monto}}
 let selDate    = null; // fecha seleccionada actualmente (string Y-m-d)
 const todayStr = new Date().toISOString().slice(0, 10);
 
+/* ── Selección masiva ───────────────────────────────────────────────────────── */
+var selMasivo    = false;
+var seleccionIds = {}; // idd → {nombre, cuota, fechaActual}
+
+function selBarActualizar() {
+    var n = Object.keys(seleccionIds).length;
+    if (n === 0) {
+        $('#sel-bar').hide();
+        $('body').removeClass('sel-masivo-on');
+    } else {
+        $('#sel-bar').css('display', 'flex');
+        $('body').addClass('sel-masivo-on');
+    }
+    $('#sel-count').text(n);
+}
+
+function selLimpiar() {
+    Object.keys(seleccionIds).forEach(function (k) { delete seleccionIds[k]; });
+    $('.cuota-card').removeClass('seleccionada');
+    $('.cuota-check').prop('checked', false);
+    selBarActualizar();
+}
+
+/* ── Helpers móvil ──────────────────────────────────────────────────────────── */
+function isMobile() { return window.innerWidth <= 768; }
+
+function openPanel() {
+    if (!isMobile()) return;
+    $('.v2-cal-panel').addClass('panel-open');
+    $('#panel-overlay').addClass('active');
+    $('body').css('overflow', 'hidden');
+}
+
+function closePanel() {
+    $('.v2-cal-panel').removeClass('panel-open');
+    $('#panel-overlay').removeClass('active');
+    $('body').css('overflow', '');
+}
+
+/* ── Filtrar cuotas ─────────────────────────────────────────────────────────── */
+function filtrarPanel() {
+    var q           = ($('#panel-search').val() || '').toLowerCase().trim();
+    var filtroEstado = ($('[data-filter].active').data('filter') || 'all');
+
+    $('#btn-clear-search').toggle(q.length > 0);
+
+    var visible = 0;
+    $('.cuota-card').each(function () {
+        var matchSearch = !q || ($(this).data('search') || '').indexOf(q) >= 0;
+        var matchEstado = filtroEstado === 'all'
+            || $(this).data('estado') === filtroEstado
+            || (filtroEstado === 'P' && $(this).data('estado') === 'T');
+        var show = matchSearch && matchEstado;
+        $(this).toggle(show);
+        if (show) visible++;
+    });
+
+    $('#panel-no-results').toggle(visible === 0 && ($('.cuota-card').length > 0));
+}
+
+function resetFiltros() {
+    $('[data-filter]').removeClass('active');
+    $('[data-filter="all"]').addClass('active');
+    $('#panel-search').val('');
+    $('#btn-clear-search').hide();
+    filtrarPanel();
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════════
  * DOCUMENT READY
  * ═══════════════════════════════════════════════════════════════════════════════ */
@@ -75,12 +143,16 @@ $(function () {
 
     /* ── Cerrar panel ─────────────────────────────────────────────────────── */
     $('#btn-panel-close').on('click', function () {
+        closePanel();
         selDate = null;
         $('.cal-cell').removeClass('selected');
         $('#panel-list').hide().empty();
         $('#panel-placeholder').show();
         $('#panel-title').text('Cobros del día');
         $('#panel-subtitle').text('Selecciona un día del calendario');
+        $('#panel-search-wrap').hide();
+        $('#panel-filters-wrap').hide();
+        resetFiltros();
         $(this).hide();
     });
 
@@ -92,6 +164,7 @@ $(function () {
         $(this).addClass('selected');
         selDate = fecha;
         cargarPanelDia(fecha);
+        openPanel();
     });
 
     /* ════════════════════════════════════════════════════════════════════════
@@ -431,6 +504,135 @@ $(function () {
         if ($.fn.DataTable.isDataTable('#atrasosp')) $('#atrasosp').DataTable().destroy();
     });
 
+    /* ── Overlay clic (cerrar panel móvil) ───────────────────────────────── */
+    $('#panel-overlay').on('click', function () {
+        closePanel();
+        selDate = null;
+        $('.cal-cell').removeClass('selected');
+        $('#panel-list').hide().empty();
+        $('#panel-placeholder').show();
+        $('#panel-title').text('Cobros del día');
+        $('#panel-subtitle').text('Selecciona un día del calendario');
+        $('#btn-panel-close').hide();
+        $('#panel-search-wrap').hide();
+        $('#panel-filters-wrap').hide();
+        resetFiltros();
+    });
+
+    /* ── Buscador ─────────────────────────────────────────────────────────── */
+    $(document).on('input', '#panel-search', function () {
+        filtrarPanel();
+    });
+    $(document).on('click', '#btn-clear-search', function () {
+        $('#panel-search').val('').trigger('input');
+    });
+
+    /* ── Filtros de estado ────────────────────────────────────────────────── */
+    $(document).on('click', '[data-filter]', function () {
+        $('[data-filter]').removeClass('active');
+        $(this).addClass('active');
+        filtrarPanel();
+    });
+
+    /* ════════════════════════════════════════════════════════════════════════
+     * SELECCIÓN MASIVA
+     * ════════════════════════════════════════════════════════════════════════ */
+
+    /* Toggle modo selección */
+    $('#btn-modo-masivo').on('click', function () {
+        selMasivo = !selMasivo;
+        $(this).toggleClass('activo', selMasivo);
+        if (!selMasivo) { selLimpiar(); }
+        /* Re-renderizar el panel si hay un día seleccionado */
+        if (selDate) cargarPanelDia(selDate);
+    });
+
+    /* Checkbox de cuota: añadir/quitar de la selección */
+    $(document).on('change', '.cuota-check', function () {
+        var idd   = $(this).data('idd');
+        var $card = $(this).closest('.cuota-card');
+        if ($(this).is(':checked')) {
+            seleccionIds[idd] = {
+                nombre:      $card.data('nombre') || '',
+                cuota:       $card.data('cuota')  || '',
+                fechaActual: $card.data('fecha')  || ''
+            };
+            $card.addClass('seleccionada');
+        } else {
+            delete seleccionIds[idd];
+            $card.removeClass('seleccionada');
+        }
+        selBarActualizar();
+    });
+
+    /* Limpiar selección */
+    $('#btn-sel-limpiar').on('click', function () {
+        selLimpiar();
+    });
+
+    /* Abrir modal cambio masivo */
+    $('#btn-sel-cambiar').on('click', function () {
+        var n = Object.keys(seleccionIds).length;
+        if (n === 0) return;
+        $('#cf-count').text(n);
+        $('#cf-nueva-fecha').val('');
+        $('#cf-feedback').hide().text('');
+        $('#modal-cambiar-fecha').modal('show');
+    });
+
+    /* Confirmar cambio masivo */
+    $('#btn-cf-confirmar').on('click', function () {
+        var nuevaFecha = $('#cf-nueva-fecha').val();
+        if (!nuevaFecha) {
+            $('#cf-feedback').text('Debes seleccionar una fecha.').show();
+            return;
+        }
+        var ids = Object.keys(seleccionIds).map(Number);
+        var $btn = $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i>Guardando...');
+
+        $.ajax({
+            url:      BASE_PC + '/cambiar-fechas',
+            method:   'POST',
+            dataType: 'json',
+            data: {
+                _token:       $('meta[name="csrf-token"]').attr('content')
+                           || $('input[name="_token"]').first().val(),
+                ids:          ids,
+                nueva_fecha:  nuevaFecha
+            },
+            success: function (resp) {
+                if (resp.success) {
+                    $('#modal-cambiar-fecha').modal('hide');
+                    selLimpiar();
+                    selMasivo = false;
+                    $('#btn-modo-masivo').removeClass('activo');
+                    cargarCalendario(calYear, calMonth, selDate);
+                    if (selDate) cargarPanelDia(selDate);
+                    Swal.fire({
+                        icon: 'success',
+                        title: resp.actualizadas + ' cuota(s) actualizadas',
+                        showConfirmButton: false,
+                        timer: 2000
+                    });
+                } else {
+                    $('#cf-feedback').text(resp.msg || 'Error al actualizar.').show();
+                    $btn.prop('disabled', false).html('<i class="fas fa-check mr-1"></i>Aplicar cambio');
+                }
+            },
+            error: function () {
+                $('#cf-feedback').text('Error de red. Intenta de nuevo.').show();
+                $btn.prop('disabled', false).html('<i class="fas fa-check mr-1"></i>Aplicar cambio');
+            }
+        });
+    });
+
+    /* Resetear botón al cerrar modal */
+    $('#modal-cambiar-fecha').on('hidden.bs.modal', function () {
+        $('#btn-cf-confirmar').prop('disabled', false)
+            .html('<i class="fas fa-check mr-1"></i>Aplicar cambio');
+        $('#cf-feedback').hide().text('');
+    });
+
 });
 
 /* ═══════════════════════════════════════════════════════════════════════════════
@@ -530,6 +732,8 @@ function cargarPanelDia(fecha) {
 
         if (cuotas.length === 0) {
             $('#panel-subtitle').text('Sin cuotas para este día');
+            $('#panel-search-wrap').hide();
+            $('#panel-filters-wrap').hide();
             $('#panel-list').html(
                 '<p class="text-center text-muted py-3" style="font-size:13px">'
               + '<i class="fas fa-check-circle fa-lg d-block mb-1 text-success"></i>'
@@ -576,8 +780,20 @@ function cargarPanelDia(fecha) {
                   + c.cuotas_atrasadas + ' atraso(s)</small>'
                 : '';
 
-            html += '<div class="cuota-card ec-' + c.estado + '">'
+            const yaSel    = selMasivo && !!seleccionIds[c.idd];
+            const checkHtml = selMasivo && !esPagada
+                ? '<input type="checkbox" class="cuota-check" data-idd="' + c.idd + '"'
+                  + (yaSel ? ' checked' : '') + '>'
+                : '';
+
+            html += '<div class="cuota-card ec-' + c.estado + (yaSel ? ' seleccionada' : '') + '"'
+                  + ' data-search="' + (escHtml(c.nombres) + ' ' + escHtml(c.apellidos) + ' ' + c.idp + ' ' + c.d_numero_cuota).toLowerCase() + '"'
+                  + ' data-estado="' + c.estado + '"'
+                  + ' data-nombre="' + escHtml(c.nombres + ' ' + c.apellidos) + '"'
+                  + ' data-cuota="' + c.d_numero_cuota + '"'
+                  + ' data-fecha="' + escHtml(c.fecha_cuota || '') + '">'
                   + '  <div class="d-flex align-items-start justify-content-between">'
+                  + '    ' + checkHtml
                   + '    <div style="flex:1;min-width:0">'
                   + '      <div class="cc-name text-truncate">' + escHtml(c.nombres) + ' ' + escHtml(c.apellidos) + '</div>'
                   + '      <div class="cc-meta">Crédito #' + c.idp + ' · Cuota #' + c.d_numero_cuota + '</div>'
@@ -588,17 +804,22 @@ function cargarPanelDia(fecha) {
                   + '      ' + badge
                   + '    </div>'
                   + '  </div>'
-                  + '  <div class="d-flex justify-content-between align-items-center mt-2">'
-                  + '    <div>' + alertaAtraso + '</div>'
-                  + '    <div>'
-                  + (esPagada ? btnEditar : btnPagar)
-                  + btnDetalle + btnHistorial
-                  + '    </div>'
-                  + '  </div>'
+                  + (selMasivo ? '' :
+                       '  <div class="d-flex justify-content-between align-items-center mt-2">'
+                     + '    <div>' + alertaAtraso + '</div>'
+                     + '    <div>'
+                     + (esPagada ? btnEditar : btnPagar)
+                     + btnDetalle + btnHistorial
+                     + '    </div>'
+                     + '  </div>'
+                    )
                   + '</div>';
         });
 
         $('#panel-list').html(html);
+        $('#panel-search-wrap').show();
+        $('#panel-filters-wrap').show();
+        resetFiltros();
     }).fail(function () {
         $('#panel-subtitle').text('Error al cargar');
         $('#panel-list').html(
