@@ -11,11 +11,7 @@
 @include('admin.v2._partials.mobile-styles')
 <style>
 /* ── Layout principal ─────────────────────────────────────── */
-.v2-cal-wrap {
-    display: flex;
-    gap: 16px;
-    align-items: flex-start;
-}
+.v2-cal-wrap { display: flex; gap: 16px; align-items: flex-start; }
 .v2-cal-main  { flex: 1; min-width: 0; }
 .v2-cal-panel { width: 340px; flex-shrink: 0; position: sticky; top: 70px; }
 
@@ -45,19 +41,47 @@
 .cb-a { background: #dc3545; color: #fff; font-size: 9px; padding: 1px 5px; border-radius: 20px; white-space: nowrap; }
 
 /* ── Panel lateral ────────────────────────────────────────── */
+.panel-drag {
+    display: none; text-align: center;
+    padding: 8px 0 2px;
+    background: linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);
+    border-radius: 20px 20px 0 0; cursor: grab;
+}
+.panel-drag-notch {
+    width: 36px; height: 4px;
+    background: rgba(255,255,255,.45); border-radius: 2px; margin: 0 auto;
+}
 .panel-hdr {
     background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-    color: #fff; border-radius: 8px 8px 0 0; padding: 12px 14px;
+    color: #fff; padding: 10px 14px;
 }
 .panel-hdr .ph-title { font-weight: 700; font-size: 14px; }
 .panel-hdr .ph-sub   { font-size: 11px; opacity: .85; margin-top: 2px; }
-.panel-body { max-height: calc(100vh - 260px); overflow-y: auto; padding: 8px; }
+.panel-body { max-height: calc(100vh - 280px); overflow-y: auto; padding: 0 8px 8px; }
+
+/* ── Buscador ─────────────────────────────────────────────── */
+#panel-search-wrap { padding: 6px 8px 0; }
+#panel-search-wrap .input-group-text { border-right: 0; background: #f8f9fa; }
+#panel-search-wrap .form-control     { border-left: 0; font-size: 12px; }
+
+/* ── Filtros de estado ────────────────────────────────────── */
+.panel-filters { display: flex; gap: 4px; padding: 6px 8px 2px; flex-wrap: wrap; }
+.filter-btn {
+    font-size: 10px; padding: 2px 9px; border-radius: 20px; cursor: pointer;
+    border: 1px solid #dee2e6; background: #fff; color: #6c757d;
+    transition: all .12s; line-height: 1.6;
+}
+.filter-btn.active             { color: #fff; border-color: transparent; }
+.filter-btn.fb-all.active      { background: #6366f1; }
+.filter-btn.fb-pend.active     { background: #fd7e14; }
+.filter-btn.fb-atra.active     { background: #dc3545; }
+.filter-btn.fb-pago.active     { background: #198754; }
 
 /* ── Cuota card ───────────────────────────────────────────── */
 .cuota-card {
     border-radius: 8px; border-left: 4px solid #dee2e6;
     background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.08);
-    padding: 10px 12px; margin-bottom: 8px;
+    padding: 10px 12px; margin-bottom: 8px; margin-top: 6px;
     transition: box-shadow .12s;
 }
 .cuota-card:hover { box-shadow: 0 3px 8px rgba(0,0,0,.12); }
@@ -80,13 +104,43 @@
 .field-feedback { font-size: 11px; margin-top: 2px; display: none; }
 .field-feedback.show { display: block; }
 
-/* ── Responsive ───────────────────────────────────────────── */
+/* ── Overlay móvil ────────────────────────────────────────── */
+.v2-panel-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,.45); z-index: 1049;
+}
+.v2-panel-overlay.active { display: block; }
+
+/* ── Responsive (móvil) ───────────────────────────────────── */
 @media (max-width: 768px) {
-    .v2-cal-wrap   { flex-direction: column; }
-    .v2-cal-panel  { width: 100%; position: static; }
-    .cal-cell      { min-height: 50px; }
-    .panel-body    { max-height: 300px; }
-    .cal-hdr       { font-size: 9px; padding: 3px 1px; }
+    /* Panel pasa a bottom-sheet fijo */
+    .v2-cal-wrap  { display: block; }
+    .v2-cal-panel {
+        position: fixed;
+        bottom: 0; left: 0; right: 0; width: 100%;
+        z-index: 1050;
+        transform: translateY(105%);
+        transition: transform .32s cubic-bezier(.32,.72,0,1);
+        border-radius: 20px 20px 0 0;
+        overflow: hidden;
+        max-height: 80vh;
+        display: flex; flex-direction: column;
+    }
+    .v2-cal-panel .card {
+        border-radius: 20px 20px 0 0;
+        flex: 1; display: flex; flex-direction: column; overflow: hidden;
+    }
+    .v2-cal-panel.panel-open { transform: translateY(0); }
+    .panel-drag   { display: block; }
+    .panel-body   { max-height: calc(80vh - 110px); }
+    /* Calendario más compacto */
+    .cal-cell { min-height: 48px; padding: 4px 2px 2px; }
+    .cal-dn   { font-size: 11px; }
+    .cal-hdr  { font-size: 9px; padding: 3px 1px; }
+    .cb-p, .cb-c, .cb-a { font-size: 8px; padding: 1px 3px; }
+    /* Barra superior */
+    .cal-legend { display: none; }
+    .btn-top-text { display: none; }
 }
 </style>
 @endsection
@@ -104,15 +158,15 @@ window.CAL_BASE = '{{ url("admin/v2/pago-card") }}';
 @section('contenido')
 
 {{-- ── Barra superior ─────────────────────────────────────────── --}}
-<div class="d-flex align-items-center justify-content-between flex-wrap mb-3" style="gap:8px">
+<div class="d-flex align-items-center justify-content-between flex-wrap mb-2" style="gap:6px">
 
   {{-- Navegación de mes --}}
   <div class="d-flex align-items-center">
     <button id="btn-prev-mes" class="btn btn-sm btn-outline-secondary" title="Mes anterior">
       <i class="fas fa-chevron-left"></i>
     </button>
-    <h5 id="cal-titulo" class="mb-0 mx-3 font-weight-bold"
-        style="min-width:180px;text-align:center">Cargando...</h5>
+    <h5 id="cal-titulo" class="mb-0 mx-2 font-weight-bold"
+        style="min-width:150px;text-align:center;font-size:1rem">Cargando...</h5>
     <button id="btn-next-mes" class="btn btn-sm btn-outline-secondary" title="Mes siguiente">
       <i class="fas fa-chevron-right"></i>
     </button>
@@ -120,20 +174,25 @@ window.CAL_BASE = '{{ url("admin/v2/pago-card") }}';
   </div>
 
   {{-- Leyenda + acciones rápidas --}}
-  <div class="d-flex align-items-center flex-wrap" style="gap:6px">
-    <div class="cal-legend mr-2">
+  <div class="d-flex align-items-center flex-wrap" style="gap:5px">
+    <div class="cal-legend mr-1">
       <span><span class="cb-p">P</span> Pagadas</span>
       <span><span class="cb-c">C</span> Pendientes</span>
       <span><span class="cb-a">A</span> Atrasadas</span>
     </div>
     <button class="btn btn-sm btn-info" data-toggle="modal" data-target="#modal-u-cli">
-      <i class="fas fa-user-plus"></i> Cliente
+      <i class="fas fa-user-plus"></i>
+      <span class="btn-top-text"> Cliente</span>
     </button>
     <button class="btn btn-sm btn-success" data-toggle="modal" data-target="#modal-pc">
-      <i class="fas fa-file-invoice-dollar"></i> Préstamo
+      <i class="fas fa-file-invoice-dollar"></i>
+      <span class="btn-top-text"> Préstamo</span>
     </button>
   </div>
 </div>
+
+{{-- Overlay para bottom-sheet móvil --}}
+<div class="v2-panel-overlay" id="panel-overlay"></div>
 
 {{-- ── Calendario + panel lateral ─────────────────────────────── --}}
 <div class="v2-cal-wrap">
@@ -167,9 +226,15 @@ window.CAL_BASE = '{{ url("admin/v2/pago-card") }}';
   <div class="v2-cal-panel">
     <div class="card shadow-sm mb-0">
 
+      {{-- Drag handle (solo móvil) --}}
+      <div class="panel-drag">
+        <div class="panel-drag-notch"></div>
+      </div>
+
+      {{-- Header --}}
       <div class="panel-hdr">
         <div class="d-flex align-items-start justify-content-between">
-          <div>
+          <div style="flex:1;min-width:0">
             <div class="ph-title" id="panel-title">Cobros del día</div>
             <div class="ph-sub"   id="panel-subtitle">Selecciona un día del calendario</div>
           </div>
@@ -179,12 +244,40 @@ window.CAL_BASE = '{{ url("admin/v2/pago-card") }}';
         </div>
       </div>
 
+      {{-- Buscador (oculto hasta que carguen cuotas) --}}
+      <div id="panel-search-wrap" style="display:none">
+        <div class="input-group input-group-sm">
+          <div class="input-group-prepend">
+            <span class="input-group-text"><i class="fas fa-search text-muted"></i></span>
+          </div>
+          <input type="text" id="panel-search" class="form-control"
+                 placeholder="Buscar cliente, crédito...">
+          <div class="input-group-append">
+            <button class="btn btn-outline-secondary" id="btn-clear-search"
+                    type="button" style="display:none" title="Limpiar">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {{-- Filtros de estado (ocultos hasta que carguen cuotas) --}}
+      <div id="panel-filters-wrap" style="display:none" class="panel-filters">
+        <button class="filter-btn fb-all active"  data-filter="all">Todos</button>
+        <button class="filter-btn fb-pend"         data-filter="C">Pendiente</button>
+        <button class="filter-btn fb-atra"         data-filter="A">Atrasada</button>
+        <button class="filter-btn fb-pago"         data-filter="P">Pagada</button>
+      </div>
+
+      {{-- Cuerpo --}}
       <div class="panel-body" id="panel-body">
         <div id="panel-placeholder" class="text-center py-4 text-muted">
           <i class="fas fa-calendar-day fa-2x mb-2 d-block" style="color:#8b5cf6"></i>
           <span style="font-size:13px">Toca un día del calendario<br>para ver las cuotas.</span>
         </div>
         <div id="panel-list" style="display:none"></div>
+        <p id="panel-no-results" class="text-center text-muted py-2"
+           style="font-size:12px;display:none">Sin resultados.</p>
       </div>
 
     </div>

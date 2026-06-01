@@ -45,6 +45,51 @@ let calData    = {};   // {fecha: {pagadas, pendientes, atrasadas, monto}}
 let selDate    = null; // fecha seleccionada actualmente (string Y-m-d)
 const todayStr = new Date().toISOString().slice(0, 10);
 
+/* ── Helpers móvil ──────────────────────────────────────────────────────────── */
+function isMobile() { return window.innerWidth <= 768; }
+
+function openPanel() {
+    if (!isMobile()) return;
+    $('.v2-cal-panel').addClass('panel-open');
+    $('#panel-overlay').addClass('active');
+    $('body').css('overflow', 'hidden');
+}
+
+function closePanel() {
+    $('.v2-cal-panel').removeClass('panel-open');
+    $('#panel-overlay').removeClass('active');
+    $('body').css('overflow', '');
+}
+
+/* ── Filtrar cuotas ─────────────────────────────────────────────────────────── */
+function filtrarPanel() {
+    var q           = ($('#panel-search').val() || '').toLowerCase().trim();
+    var filtroEstado = ($('[data-filter].active').data('filter') || 'all');
+
+    $('#btn-clear-search').toggle(q.length > 0);
+
+    var visible = 0;
+    $('.cuota-card').each(function () {
+        var matchSearch = !q || ($(this).data('search') || '').indexOf(q) >= 0;
+        var matchEstado = filtroEstado === 'all'
+            || $(this).data('estado') === filtroEstado
+            || (filtroEstado === 'P' && $(this).data('estado') === 'T');
+        var show = matchSearch && matchEstado;
+        $(this).toggle(show);
+        if (show) visible++;
+    });
+
+    $('#panel-no-results').toggle(visible === 0 && ($('.cuota-card').length > 0));
+}
+
+function resetFiltros() {
+    $('[data-filter]').removeClass('active');
+    $('[data-filter="all"]').addClass('active');
+    $('#panel-search').val('');
+    $('#btn-clear-search').hide();
+    filtrarPanel();
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════════
  * DOCUMENT READY
  * ═══════════════════════════════════════════════════════════════════════════════ */
@@ -75,12 +120,16 @@ $(function () {
 
     /* ── Cerrar panel ─────────────────────────────────────────────────────── */
     $('#btn-panel-close').on('click', function () {
+        closePanel();
         selDate = null;
         $('.cal-cell').removeClass('selected');
         $('#panel-list').hide().empty();
         $('#panel-placeholder').show();
         $('#panel-title').text('Cobros del día');
         $('#panel-subtitle').text('Selecciona un día del calendario');
+        $('#panel-search-wrap').hide();
+        $('#panel-filters-wrap').hide();
+        resetFiltros();
         $(this).hide();
     });
 
@@ -92,6 +141,7 @@ $(function () {
         $(this).addClass('selected');
         selDate = fecha;
         cargarPanelDia(fecha);
+        openPanel();
     });
 
     /* ════════════════════════════════════════════════════════════════════════
@@ -431,6 +481,36 @@ $(function () {
         if ($.fn.DataTable.isDataTable('#atrasosp')) $('#atrasosp').DataTable().destroy();
     });
 
+    /* ── Overlay clic (cerrar panel móvil) ───────────────────────────────── */
+    $('#panel-overlay').on('click', function () {
+        closePanel();
+        selDate = null;
+        $('.cal-cell').removeClass('selected');
+        $('#panel-list').hide().empty();
+        $('#panel-placeholder').show();
+        $('#panel-title').text('Cobros del día');
+        $('#panel-subtitle').text('Selecciona un día del calendario');
+        $('#btn-panel-close').hide();
+        $('#panel-search-wrap').hide();
+        $('#panel-filters-wrap').hide();
+        resetFiltros();
+    });
+
+    /* ── Buscador ─────────────────────────────────────────────────────────── */
+    $(document).on('input', '#panel-search', function () {
+        filtrarPanel();
+    });
+    $(document).on('click', '#btn-clear-search', function () {
+        $('#panel-search').val('').trigger('input');
+    });
+
+    /* ── Filtros de estado ────────────────────────────────────────────────── */
+    $(document).on('click', '[data-filter]', function () {
+        $('[data-filter]').removeClass('active');
+        $(this).addClass('active');
+        filtrarPanel();
+    });
+
 });
 
 /* ═══════════════════════════════════════════════════════════════════════════════
@@ -530,6 +610,8 @@ function cargarPanelDia(fecha) {
 
         if (cuotas.length === 0) {
             $('#panel-subtitle').text('Sin cuotas para este día');
+            $('#panel-search-wrap').hide();
+            $('#panel-filters-wrap').hide();
             $('#panel-list').html(
                 '<p class="text-center text-muted py-3" style="font-size:13px">'
               + '<i class="fas fa-check-circle fa-lg d-block mb-1 text-success"></i>'
@@ -576,7 +658,9 @@ function cargarPanelDia(fecha) {
                   + c.cuotas_atrasadas + ' atraso(s)</small>'
                 : '';
 
-            html += '<div class="cuota-card ec-' + c.estado + '">'
+            html += '<div class="cuota-card ec-' + c.estado + '"'
+                  + ' data-search="' + (escHtml(c.nombres) + ' ' + escHtml(c.apellidos) + ' ' + c.idp + ' ' + c.d_numero_cuota).toLowerCase() + '"'
+                  + ' data-estado="' + c.estado + '">'
                   + '  <div class="d-flex align-items-start justify-content-between">'
                   + '    <div style="flex:1;min-width:0">'
                   + '      <div class="cc-name text-truncate">' + escHtml(c.nombres) + ' ' + escHtml(c.apellidos) + '</div>'
@@ -599,6 +683,9 @@ function cargarPanelDia(fecha) {
         });
 
         $('#panel-list').html(html);
+        $('#panel-search-wrap').show();
+        $('#panel-filters-wrap').show();
+        resetFiltros();
     }).fail(function () {
         $('#panel-subtitle').text('Error al cargar');
         $('#panel-list').html(
