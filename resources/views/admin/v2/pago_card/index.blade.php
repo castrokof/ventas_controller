@@ -104,6 +104,12 @@
 .field-feedback { font-size: 11px; margin-top: 2px; display: none; }
 .field-feedback.show { display: block; }
 
+/* ── Selección masiva ─────────────────────────────────────── */
+#btn-modo-masivo.activo { background:#ffc107!important; color:#212529!important; border-color:#ffc107!important; }
+.cuota-check { margin-right: 8px; width: 17px; height: 17px; cursor: pointer; flex-shrink: 0; }
+.cuota-card.seleccionada { outline: 2px solid #ffc107; background: #fffde7; }
+body.sel-masivo-on { padding-bottom: 62px; }
+
 /* ── Overlay móvil ────────────────────────────────────────── */
 .v2-panel-overlay {
     display: none; position: fixed; inset: 0;
@@ -187,6 +193,12 @@ window.CAL_BASE = '{{ url("admin/v2/pago-card") }}';
     <button class="btn btn-sm btn-success" data-toggle="modal" data-target="#modal-pc">
       <i class="fas fa-file-invoice-dollar"></i>
       <span class="btn-top-text"> Préstamo</span>
+    </button>
+    <button id="btn-modo-masivo" class="btn btn-sm btn-outline-warning"
+            title="Activar selección masiva para cambio de fecha">
+      <i class="fas fa-calendar-check mr-1"></i>
+      <span class="btn-top-text">Cambio masivo</span>
+      <span class="d-none d-inline btn-top-text-short" style="display:none!important">Masivo</span>
     </button>
   </div>
 </div>
@@ -502,6 +514,63 @@ window.CAL_BASE = '{{ url("admin/v2/pago-card") }}';
         </form>
       </div>
     </div>
+  </div>
+</div>
+
+
+{{-- ════════════════════════════════════════════════════════ --}}
+{{-- MODAL: Cambio masivo de fecha de cuota                  --}}
+{{-- ════════════════════════════════════════════════════════ --}}
+<div class="modal fade" id="modal-cambiar-fecha" tabindex="-1"
+     role="dialog" aria-labelledby="modal-cf-titulo" aria-modal="true">
+  <div class="modal-dialog modal-sm" role="document">
+    <div class="modal-content">
+      <div class="modal-header" style="background:#ffc107">
+        <h6 class="modal-title font-weight-bold" id="modal-cf-titulo">
+          <i class="fas fa-calendar-alt mr-1"></i> Cambiar fecha de cuotas
+        </h6>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-2" style="font-size:13px">
+          Se cambiarán <span id="cf-count" class="font-weight-bold text-warning"></span> cuota(s).
+        </p>
+        <label class="mb-1" style="font-size:13px;font-weight:600">Nueva fecha de cobro</label>
+        <input type="date" id="cf-nueva-fecha" class="form-control form-control-sm">
+        <div id="cf-feedback" class="text-danger mt-1" style="font-size:12px;display:none"></div>
+      </div>
+      <div class="modal-footer py-2">
+        <button type="button" class="btn btn-sm btn-secondary" data-dismiss="modal">Cancelar</button>
+        <button type="button" id="btn-cf-confirmar" class="btn btn-sm btn-warning font-weight-bold">
+          <i class="fas fa-check mr-1"></i>Aplicar cambio
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{{-- ════════════════════════════════════════════════════════ --}}
+{{-- Barra de selección masiva (fija en la parte inferior)   --}}
+{{-- ════════════════════════════════════════════════════════ --}}
+<div id="sel-bar" style="
+    display:none; position:fixed; bottom:0; left:0; right:0; z-index:1040;
+    background:#343a40; color:#fff; padding:10px 16px;
+    box-shadow:0 -3px 12px rgba(0,0,0,.25);
+    align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px">
+  <div style="font-size:13px">
+    <i class="fas fa-check-square mr-1" style="color:#ffc107"></i>
+    <span id="sel-count">0</span> cuota(s) seleccionada(s)
+  </div>
+  <div class="d-flex" style="gap:8px">
+    <button id="btn-sel-limpiar" class="btn btn-sm btn-outline-light">
+      <i class="fas fa-times mr-1"></i>Limpiar
+    </button>
+    <button id="btn-sel-cambiar" class="btn btn-sm btn-warning font-weight-bold"
+            style="color:#212529">
+      <i class="fas fa-calendar-alt mr-1"></i>Cambiar fecha
+    </button>
   </div>
 </div>
 
