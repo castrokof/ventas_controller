@@ -1,9 +1,9 @@
 /**
- * assets/pages/scripts/admin/pagocalender/index.js
+ * assets/pages/scripts/admin/v2/pago_card/calendar.js
  *
- * V2 Pago Card — calendario mensual de cuotas.
+ * V2 Pago Card — vista única del cobrador.
  *
- * Endpoints usados:
+ * Endpoints:
  *   GET  /admin/v2/pago-card/calendario?mes=M&anio=Y  → conteo por día
  *   GET  /admin/v2/pago-card/dia?fecha=Y-m-d          → cuotas del día
  *   GET  /admin/v2/pago-card/{idd}/edit               → datos cuota pendiente
@@ -15,6 +15,7 @@
  *   GET  /admin/v2/pago-card/{idp}                    → historial pagos
  *   GET  /admin/v2/pago-card/adelanto?prestamoc_id=X  → cuotas adelantables
  *   GET  /admin/v2/pago-card/atrasos?prestamoc_id=X   → cuotas atrasadas
+ *   POST /admin/v2/pago-card/cambiar-fechas           → cambio masivo de fecha
  */
 
 /* ── Base URL (inyectada desde la vista) ────────────────────────────────────── */
@@ -34,20 +35,22 @@ const idioma = {
     oPaginate: { sFirst: 'Primero', sLast: 'Último', sNext: 'Siguiente', sPrevious: 'Anterior' },
 };
 
-/* ── Estado del calendario ──────────────────────────────────────────────────── */
+/* ── Constantes de fechas ───────────────────────────────────────────────────── */
 const MESES = [
     'Enero','Febrero','Marzo','Abril','Mayo','Junio',
     'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'
 ];
-let calYear    = new Date().getFullYear();
-let calMonth   = new Date().getMonth() + 1; // 1-12
-let calData    = {};   // {fecha: {pagadas, pendientes, atrasadas, monto}}
-let selDate    = null; // fecha seleccionada actualmente (string Y-m-d)
+const DIAS_SEM = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+
+let calYear  = new Date().getFullYear();
+let calMonth = new Date().getMonth() + 1;
+let calData  = {};
+let selDate  = null;
 const todayStr = new Date().toISOString().slice(0, 10);
 
 /* ── Selección masiva ───────────────────────────────────────────────────────── */
 var selMasivo    = false;
-var seleccionIds = {}; // idd → {nombre, cuota, fechaActual}
+var seleccionIds = {};
 
 function selBarActualizar() {
     var n = Object.keys(seleccionIds).length;
@@ -68,25 +71,26 @@ function selLimpiar() {
     selBarActualizar();
 }
 
-/* ── Helpers móvil ──────────────────────────────────────────────────────────── */
-function isMobile() { return window.innerWidth <= 768; }
+/* ── Barra de fecha ─────────────────────────────────────────────────────────── */
+function fechaBarActualizar(fechaStr) {
+    var partes = fechaStr.split('-');
+    var y = parseInt(partes[0], 10);
+    var m = parseInt(partes[1], 10);
+    var d = parseInt(partes[2], 10);
+    var diaSem = DIAS_SEM[new Date(y, m - 1, d).getDay()];
+    var diaSemCap = diaSem.charAt(0).toUpperCase() + diaSem.slice(1);
 
-function openPanel() {
-    if (!isMobile()) return;
-    $('.v2-cal-panel').addClass('panel-open');
-    $('#panel-overlay').addClass('active');
-    $('body').css('overflow', 'hidden');
-}
-
-function closePanel() {
-    $('.v2-cal-panel').removeClass('panel-open');
-    $('#panel-overlay').removeClass('active');
-    $('body').css('overflow', '');
+    if (fechaStr === todayStr) {
+        $('#fecha-label').text('Hoy — ' + d + ' de ' + MESES[m - 1]);
+    } else {
+        $('#fecha-label').text(d + ' de ' + MESES[m - 1] + ' ' + y);
+    }
+    $('#fecha-sub').text(diaSemCap);
 }
 
 /* ── Filtrar cuotas ─────────────────────────────────────────────────────────── */
 function filtrarPanel() {
-    var q           = ($('#panel-search').val() || '').toLowerCase().trim();
+    var q            = ($('#panel-search').val() || '').toLowerCase().trim();
     var filtroEstado = ($('[data-filter].active').data('filter') || 'all');
 
     $('#btn-clear-search').toggle(q.length > 0);
@@ -102,7 +106,7 @@ function filtrarPanel() {
         if (show) visible++;
     });
 
-    $('#panel-no-results').toggle(visible === 0 && ($('.cuota-card').length > 0));
+    $('#panel-no-results').toggle(visible === 0 && $('.cuota-card').length > 0);
 }
 
 function resetFiltros() {
@@ -118,62 +122,83 @@ function resetFiltros() {
  * ═══════════════════════════════════════════════════════════════════════════════ */
 $(function () {
 
-    /* ── Inicializar calendario con el mes actual ─────────────────────────── */
-    cargarCalendario(calYear, calMonth);
+    /* Cargar hoy al abrir ─────────────────────────────────────────────────── */
+    selDate = todayStr;
+    fechaBarActualizar(todayStr);
+    cargarCuotasDia(todayStr);
+
+    /* ── Navegación por día ───────────────────────────────────────────────── */
+    $('#btn-prev-dia').on('click', function () {
+        var d = new Date(selDate + 'T00:00:00');
+        d.setDate(d.getDate() - 1);
+        cambiarDia(d.toISOString().slice(0, 10));
+    });
+
+    $('#btn-next-dia').on('click', function () {
+        var d = new Date(selDate + 'T00:00:00');
+        d.setDate(d.getDate() + 1);
+        cambiarDia(d.toISOString().slice(0, 10));
+    });
+
+    /* ── Ir a hoy ─────────────────────────────────────────────────────────── */
+    $('#btn-hoy').on('click', function () {
+        var now = new Date();
+        calYear  = now.getFullYear();
+        calMonth = now.getMonth() + 1;
+        cambiarDia(todayStr);
+    });
+
+    /* ── Toggle mini calendario ───────────────────────────────────────────── */
+    $('#btn-toggle-cal').on('click', function () {
+        var visible = $('#cal-container').is(':visible');
+        if (visible) {
+            $('#cal-container').slideUp(200);
+            $('#lbl-toggle-cal').text('Ver calendario');
+        } else {
+            /* Sincronizar mes con el día seleccionado antes de mostrar */
+            var partes = (selDate || todayStr).split('-');
+            var y = parseInt(partes[0], 10);
+            var m = parseInt(partes[1], 10);
+            calYear  = y;
+            calMonth = m;
+            $('#cal-container').slideDown(200);
+            $('#lbl-toggle-cal').text('Ocultar calendario');
+            cargarCalendario(calYear, calMonth, selDate);
+        }
+    });
 
     /* ── Navegación de mes ────────────────────────────────────────────────── */
     $('#btn-prev-mes').on('click', function () {
         calMonth--;
         if (calMonth < 1) { calMonth = 12; calYear--; }
-        cargarCalendario(calYear, calMonth);
+        cargarCalendario(calYear, calMonth, selDate);
     });
 
     $('#btn-next-mes').on('click', function () {
         calMonth++;
         if (calMonth > 12) { calMonth = 1; calYear++; }
-        cargarCalendario(calYear, calMonth);
-    });
-
-    $('#btn-hoy').on('click', function () {
-        const now = new Date();
-        calYear  = now.getFullYear();
-        calMonth = now.getMonth() + 1;
-        cargarCalendario(calYear, calMonth);
-    });
-
-    /* ── Cerrar panel ─────────────────────────────────────────────────────── */
-    $('#btn-panel-close').on('click', function () {
-        closePanel();
-        selDate = null;
-        $('.cal-cell').removeClass('selected');
-        $('#panel-list').hide().empty();
-        $('#panel-placeholder').show();
-        $('#panel-title').text('Cobros del día');
-        $('#panel-subtitle').text('Selecciona un día del calendario');
-        $('#panel-search-wrap').hide();
-        $('#panel-filters-wrap').hide();
-        resetFiltros();
-        $(this).hide();
+        cargarCalendario(calYear, calMonth, selDate);
     });
 
     /* ── Clic en día del calendario ───────────────────────────────────────── */
     $(document).on('click', '.cal-cell:not(.empty)', function () {
-        const fecha = $(this).data('fecha');
+        var fecha = $(this).data('fecha');
         if (!fecha) return;
         $('.cal-cell').removeClass('selected');
         $(this).addClass('selected');
-        selDate = fecha;
-        cargarPanelDia(fecha);
-        openPanel();
+        /* Cerrar el calendario al seleccionar día */
+        $('#cal-container').slideUp(200);
+        $('#lbl-toggle-cal').text('Ver calendario');
+        cambiarDia(fecha);
     });
 
     /* ════════════════════════════════════════════════════════════════════════
-     * BOTONES EN EL PANEL LATERAL
+     * BOTONES DE CUOTA CARDS
      * ════════════════════════════════════════════════════════════════════════ */
 
-    /* ── .cal-pay → pagar cuota pendiente/atrasada (por idd) ─────────────── */
+    /* Pagar cuota pendiente/atrasada */
     $(document).on('click', '.cal-pay', function () {
-        const idd = $(this).data('idd');
+        var idd = $(this).data('idd');
         $.get(BASE_PC + '/' + idd + '/edit', function (data) {
             if (!data.result || data.result.length === 0) {
                 Swal.fire('Aviso', 'No se encontró la cuota.', 'warning');
@@ -186,9 +211,9 @@ $(function () {
         }).fail(function () { Swal.fire('Error', 'No se pudo cargar la cuota.', 'error'); });
     });
 
-    /* ── .cal-edit → editar pago registrado (por idd) ────────────────────── */
+    /* Editar pago ya registrado */
     $(document).on('click', '.cal-edit', function () {
-        const idd = $(this).data('idd');
+        var idd = $(this).data('idd');
         $.get(BASE_PC + '/' + idd + '/editpay', function (data) {
             if (!data.result) {
                 Swal.fire('Aviso', 'No se encontró el pago.', 'warning');
@@ -201,21 +226,21 @@ $(function () {
         }).fail(function () { Swal.fire('Error', 'No se pudo cargar el pago.', 'error'); });
     });
 
-    /* ── .cal-detalle → cuotas del crédito en modal-d ────────────────────── */
+    /* Detalle cuotas del préstamo */
     $(document).on('click', '.cal-detalle', function () {
-        const idp = $(this).data('idp');
+        var idp = $(this).data('idp');
         $('.modal-title-d').text('Cuotas del Crédito #' + idp);
-        const $tbody = $('#detalleCuota tbody');
+        var $tbody = $('#detalleCuota tbody');
         $tbody.html('<tr><td colspan="5" class="text-center"><i class="fas fa-spinner fa-spin"></i></td></tr>');
         $('#modal-d').modal('show');
         $.get('/admin/v2/prestamo/' + idp + '/cuotas', function (data) {
-            const est = {
+            var est = {
                 C: '<span class="badge badge-warning">Pendiente</span>',
                 P: '<span class="badge badge-success">Pagada</span>',
                 A: '<span class="badge badge-danger">Atrasada</span>',
                 T: '<span class="badge badge-info">Cancelada</span>',
             };
-            const rows = (data.result || []).map(function (c) {
+            var rows = (data.result || []).map(function (c) {
                 return '<tr>'
                     + '<td>' + c.d_numero_cuota + '</td>'
                     + '<td>$' + parseFloat(c.valor_cuota).toLocaleString('es-CO') + '</td>'
@@ -233,19 +258,19 @@ $(function () {
         });
     });
 
-    /* ── .cal-historial → historial de pagos en modal-dp ─────────────────── */
+    /* Historial de pagos del crédito */
     $(document).on('click', '.cal-historial', function () {
-        const idp = $(this).data('idp');
+        var idp = $(this).data('idp');
         $('.modal-title-dp').text('Pagos realizados — Crédito #' + idp);
         $('#detalles').html('<p class="text-muted"><i class="fas fa-spinner fa-spin mr-1"></i>Cargando...</p>');
         $('#modal-dp').modal('show');
         $.get(BASE_PC + '/' + idp, function (data) {
-            const pagos = data.result1 || [];
+            var pagos = data.result1 || [];
             if (pagos.length === 0) {
                 $('#detalles').html('<p class="text-muted text-center py-3">Sin pagos registrados.</p>');
                 return;
             }
-            let html = '<table class="table table-sm table-striped table-bordered">'
+            var html = '<table class="table table-sm table-striped table-bordered">'
                      + '<thead class="thead-light"><tr>'
                      + '<th># Cuota</th><th>Abono</th><th>Fecha</th><th>Observación</th>'
                      + '</tr></thead><tbody>';
@@ -264,11 +289,10 @@ $(function () {
         });
     });
 
-    /* ── Handlers heredados (por si se reutilizan desde otras partes) ───── */
+    /* ── Handlers heredados ───────────────────────────────────────────────── */
 
-    /* pay: registrar pago por cuota individual (idd) */
     $(document).on('click', '.pay', function () {
-        const id = $(this).attr('id') || $(this).data('id');
+        var id = $(this).attr('id') || $(this).data('id');
         $.get(BASE_PC + '/' + id + '/edit', function (data) {
             if (!data.result || data.result.length === 0) return;
             rellenarModalPago(data.result[0]);
@@ -278,10 +302,9 @@ $(function () {
         }).fail(function () { Swal.fire('Error', 'No se pudo cargar la cuota.', 'error'); });
     });
 
-    /* payp/pagosr: registrar pago por préstamo (idp + fecha) */
     $(document).on('click', '.payp, .pagosr', function () {
-        const id  = $(this).attr('id');
-        const idf = $(this).attr('idf');
+        var id  = $(this).attr('id');
+        var idf = $(this).attr('idf');
         $.get(BASE_PC + '/' + id + '/editarp', { idf: idf }, function (data) {
             if (!data.result || data.result.length === 0) return;
             rellenarModalPago(data.result[0]);
@@ -291,9 +314,8 @@ $(function () {
         }).fail(function () { Swal.fire('Error', 'No se pudo cargar el préstamo.', 'error'); });
     });
 
-    /* editpay: editar pago ya registrado */
     $(document).on('click', '.editpay', function () {
-        const id = $(this).attr('id') || $(this).data('id');
+        var id = $(this).attr('id') || $(this).data('id');
         $.get(BASE_PC + '/' + id + '/editpay', function (data) {
             if (!data.result) return;
             rellenarModalPago(data.result);
@@ -303,21 +325,20 @@ $(function () {
         }).fail(function () { Swal.fire('Error', 'No se pudo cargar el pago.', 'error'); });
     });
 
-    /* detalle: cuotas del préstamo en modal-d */
     $(document).on('click', '.detalle', function () {
-        const id = $(this).attr('id');
+        var id = $(this).attr('id');
         $('.modal-title-d').text('Cuotas del Crédito #' + id);
-        const $tbody = $('#detalleCuota tbody');
+        var $tbody = $('#detalleCuota tbody');
         $tbody.html('<tr><td colspan="5" class="text-center"><i class="fas fa-spinner fa-spin"></i></td></tr>');
         $('#modal-d').modal('show');
         $.get('/admin/v2/prestamo/' + id + '/cuotas', function (data) {
-            const est = {
+            var est = {
                 C: '<span class="badge badge-warning">Pendiente</span>',
                 P: '<span class="badge badge-success">Pagada</span>',
                 A: '<span class="badge badge-danger">Anulada</span>',
                 T: '<span class="badge badge-info">Transferida</span>',
             };
-            const rows = (data.result || []).map(function (c) {
+            var rows = (data.result || []).map(function (c) {
                 return '<tr>'
                     + '<td>' + c.d_numero_cuota + '</td>'
                     + '<td>$' + parseFloat(c.valor_cuota).toLocaleString('es-CO') + '</td>'
@@ -335,19 +356,18 @@ $(function () {
         });
     });
 
-    /* detallepay: historial de pagos en modal-dp */
     $(document).on('click', '.detallepay', function () {
-        const id = $(this).attr('id');
+        var id = $(this).attr('id');
         $('.modal-title-dp').text('Pagos realizados — Crédito #' + id);
         $('#detalles').html('<p class="text-muted"><i class="fas fa-spinner fa-spin mr-1"></i>Cargando...</p>');
         $('#modal-dp').modal('show');
         $.get(BASE_PC + '/' + id, function (data) {
-            const pagos = data.result1 || [];
+            var pagos = data.result1 || [];
             if (pagos.length === 0) {
                 $('#detalles').html('<p class="text-muted text-center py-3">Sin pagos registrados.</p>');
                 return;
             }
-            let html = '<table class="table table-sm table-striped table-bordered">'
+            var html = '<table class="table table-sm table-striped table-bordered">'
                      + '<thead class="thead-light"><tr>'
                      + '<th># Cuota</th><th>Abono $</th><th>Fecha</th><th>Observación</th>'
                      + '</tr></thead><tbody>';
@@ -364,9 +384,9 @@ $(function () {
         }).fail(function () { $('#detalles').html('<p class="text-danger">Error al cargar.</p>'); });
     });
 
-    /* adelantoc: cuotas adelantables en modal-acuotas */
+    /* Cuotas adelantables */
     $(document).on('click', '.adelantoc', function () {
-        const id = $(this).attr('id');
+        var id = $(this).attr('id');
         $('.modal-title-acuotas').text('Adelanto de Cuotas — Crédito #' + id);
         if ($.fn.DataTable.isDataTable('#pagoa')) $('#pagoa').DataTable().destroy();
         $('#pagoa').DataTable({
@@ -385,9 +405,9 @@ $(function () {
         $('#modal-acuotas').modal('show');
     });
 
-    /* atrasosp: cuotas atrasadas en modal-atrasosp */
+    /* Cuotas atrasadas */
     $(document).on('click', '.atrasosp', function () {
-        const id = $(this).attr('id');
+        var id = $(this).attr('id');
         $('.modal-title-atrasosp').text('Cuotas Atrasadas — Crédito #' + id);
         if ($.fn.DataTable.isDataTable('#atrasosp')) $('#atrasosp').DataTable().destroy();
         $('#atrasosp').DataTable({
@@ -410,7 +430,6 @@ $(function () {
      * FORMULARIO DE PAGO
      * ════════════════════════════════════════════════════════════════════════ */
 
-    /* Switch: cambiar fecha de cuota */
     $('#customSwitch1').on('change', function () {
         if ($(this).is(':checked')) {
             $('#chance_fecha').show();
@@ -420,13 +439,12 @@ $(function () {
         }
     });
 
-    /* Submit: registrar o actualizar pago */
     $('#form-general').on('submit', function (e) {
         e.preventDefault();
 
-        const modo = $(this).data('modo') || 'crear';
-        const pid  = $(this).data('pid');
-        const url  = (modo === 'editar') ? BASE_PC + '/' + pid : BASE_PC + '/guardar';
+        var modo = $(this).data('modo') || 'crear';
+        var pid  = $(this).data('pid');
+        var url  = (modo === 'editar') ? BASE_PC + '/' + pid : BASE_PC + '/guardar';
 
         Swal.fire({
             title: modo === 'editar' ? '¿Actualizar pago?' : '¿Registrar pago?',
@@ -437,8 +455,8 @@ $(function () {
         }).then(function (res) {
             if (!res.value) return;
 
-            const data = $(e.target).serialize()
-                       + (modo === 'editar' ? '&_method=PUT' : '');
+            var data = $(e.target).serialize()
+                     + (modo === 'editar' ? '&_method=PUT' : '');
 
             $.ajax({
                 url:      url,
@@ -446,7 +464,7 @@ $(function () {
                 data:     data,
                 dataType: 'json',
                 success: function (resp) {
-                    const mensajes = {
+                    var mensajes = {
                         ok:          'Pago registrado correctamente.',
                         total:       'Crédito cancelado en su totalidad.',
                         okadelanto:  'Adelanto registrado correctamente.',
@@ -463,8 +481,8 @@ $(function () {
                         adelantosa:  'El abono supera el monto permitido.',
                         okcaerror:   'Error al procesar la cuota atrasada.',
                     };
-                    const errores = ['error','noadelanto','noa','adelantos','vcda','adelantosa','okcaerror'];
-                    const esError = errores.includes(resp.success);
+                    var errores = ['error','noadelanto','noa','adelantos','vcda','adelantosa','okcaerror'];
+                    var esError = errores.includes(resp.success);
 
                     Swal.fire({
                         icon:  esError ? 'warning' : 'success',
@@ -475,9 +493,10 @@ $(function () {
 
                     if (!esError) {
                         $('#modal-pd').modal('hide');
-                        /* Recargar calendario y panel del día actual */
-                        cargarCalendario(calYear, calMonth, selDate);
-                        if (selDate) cargarPanelDia(selDate);
+                        if (selDate) cargarCuotasDia(selDate);
+                        if ($('#cal-container').is(':visible')) {
+                            cargarCalendario(calYear, calMonth, selDate);
+                        }
                     }
                 },
                 error: function () {
@@ -487,7 +506,6 @@ $(function () {
         });
     });
 
-    /* Limpiar modal al cerrar */
     $('#modal-pd').on('hidden.bs.modal', function () {
         $('#form-general')[0].reset();
         $('#form-general').removeData('modo').removeData('pid');
@@ -496,27 +514,11 @@ $(function () {
         $('#customSwitch1').prop('checked', false);
     });
 
-    /* Limpiar tabla DataTable al cerrar modales */
     $('#modal-acuotas').on('hidden.bs.modal', function () {
         if ($.fn.DataTable.isDataTable('#pagoa')) $('#pagoa').DataTable().destroy();
     });
     $('#modal-atrasosp').on('hidden.bs.modal', function () {
         if ($.fn.DataTable.isDataTable('#atrasosp')) $('#atrasosp').DataTable().destroy();
-    });
-
-    /* ── Overlay clic (cerrar panel móvil) ───────────────────────────────── */
-    $('#panel-overlay').on('click', function () {
-        closePanel();
-        selDate = null;
-        $('.cal-cell').removeClass('selected');
-        $('#panel-list').hide().empty();
-        $('#panel-placeholder').show();
-        $('#panel-title').text('Cobros del día');
-        $('#panel-subtitle').text('Selecciona un día del calendario');
-        $('#btn-panel-close').hide();
-        $('#panel-search-wrap').hide();
-        $('#panel-filters-wrap').hide();
-        resetFiltros();
     });
 
     /* ── Buscador ─────────────────────────────────────────────────────────── */
@@ -538,16 +540,13 @@ $(function () {
      * SELECCIÓN MASIVA
      * ════════════════════════════════════════════════════════════════════════ */
 
-    /* Toggle modo selección */
     $('#btn-modo-masivo').on('click', function () {
         selMasivo = !selMasivo;
         $(this).toggleClass('activo', selMasivo);
         if (!selMasivo) { selLimpiar(); }
-        /* Re-renderizar el panel si hay un día seleccionado */
-        if (selDate) cargarPanelDia(selDate);
+        if (selDate) cargarCuotasDia(selDate);
     });
 
-    /* Checkbox de cuota: añadir/quitar de la selección */
     $(document).on('change', '.cuota-check', function () {
         var idd   = $(this).data('idd');
         var $card = $(this).closest('.cuota-card');
@@ -565,12 +564,10 @@ $(function () {
         selBarActualizar();
     });
 
-    /* Limpiar selección */
     $('#btn-sel-limpiar').on('click', function () {
         selLimpiar();
     });
 
-    /* Abrir modal cambio masivo */
     $('#btn-sel-cambiar').on('click', function () {
         var n = Object.keys(seleccionIds).length;
         if (n === 0) return;
@@ -580,14 +577,13 @@ $(function () {
         $('#modal-cambiar-fecha').modal('show');
     });
 
-    /* Confirmar cambio masivo */
     $('#btn-cf-confirmar').on('click', function () {
         var nuevaFecha = $('#cf-nueva-fecha').val();
         if (!nuevaFecha) {
             $('#cf-feedback').text('Debes seleccionar una fecha.').show();
             return;
         }
-        var ids = Object.keys(seleccionIds).map(Number);
+        var ids  = Object.keys(seleccionIds).map(Number);
         var $btn = $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i>Guardando...');
 
         $.ajax({
@@ -595,10 +591,10 @@ $(function () {
             method:   'POST',
             dataType: 'json',
             data: {
-                _token:       $('meta[name="csrf-token"]').attr('content')
-                           || $('input[name="_token"]').first().val(),
-                ids:          ids,
-                nueva_fecha:  nuevaFecha
+                _token:      $('meta[name="csrf-token"]').attr('content')
+                          || $('input[name="_token"]').first().val(),
+                ids:         ids,
+                nueva_fecha: nuevaFecha
             },
             success: function (resp) {
                 if (resp.success) {
@@ -606,8 +602,10 @@ $(function () {
                     selLimpiar();
                     selMasivo = false;
                     $('#btn-modo-masivo').removeClass('activo');
-                    cargarCalendario(calYear, calMonth, selDate);
-                    if (selDate) cargarPanelDia(selDate);
+                    if (selDate) cargarCuotasDia(selDate);
+                    if ($('#cal-container').is(':visible')) {
+                        cargarCalendario(calYear, calMonth, selDate);
+                    }
                     Swal.fire({
                         icon: 'success',
                         title: resp.actualizadas + ' cuota(s) actualizadas',
@@ -626,7 +624,6 @@ $(function () {
         });
     });
 
-    /* Resetear botón al cerrar modal */
     $('#modal-cambiar-fecha').on('hidden.bs.modal', function () {
         $('#btn-cf-confirmar').prop('disabled', false)
             .html('<i class="fas fa-check mr-1"></i>Aplicar cambio');
@@ -636,152 +633,93 @@ $(function () {
 });
 
 /* ═══════════════════════════════════════════════════════════════════════════════
- * CALENDARIO
+ * CAMBIAR DÍA
  * ═══════════════════════════════════════════════════════════════════════════════ */
 
-/**
- * Carga los datos del mes desde el servidor y renderiza el grid.
- * @param {number} year
- * @param {number} month   1-12
- * @param {string} [keepSelected]  fecha que debe quedar seleccionada tras renderizar
- */
-function cargarCalendario(year, month, keepSelected) {
-    $('#cal-titulo').text(MESES[month - 1] + ' ' + year);
-    $('#cal-loading').show();
-    $('#cal-grid').hide().empty();
+function cambiarDia(fechaStr) {
+    selDate = fechaStr;
+    fechaBarActualizar(fechaStr);
 
-    $.get(BASE_PC + '/calendario', { mes: month, anio: year }, function (data) {
-        calData = data.result || {};
-        renderizarGrid(year, month, keepSelected);
-    }).fail(function () {
-        calData = {};
-        renderizarGrid(year, month, keepSelected);
-    }).always(function () {
-        $('#cal-loading').hide();
-        $('#cal-grid').show();
-    });
-}
+    /* Sincronizar mes del mini calendario */
+    var partes = fechaStr.split('-');
+    var y = parseInt(partes[0], 10);
+    var m = parseInt(partes[1], 10);
 
-/**
- * Genera las celdas del grid para el mes dado.
- */
-function renderizarGrid(year, month, keepSelected) {
-    const $grid = $('#cal-grid').empty();
-
-    /* Offset: primer día del mes (lunes=0 … domingo=6) */
-    const primerDia = new Date(year, month - 1, 1).getDay();
-    const offset    = primerDia === 0 ? 6 : primerDia - 1;
-    const diasMes   = new Date(year, month, 0).getDate();
-
-    /* Celdas vacías al inicio */
-    for (let i = 0; i < offset; i++) {
-        $grid.append('<div class="cal-cell empty"></div>');
+    if (y !== calYear || m !== calMonth) {
+        calYear  = y;
+        calMonth = m;
+        if ($('#cal-container').is(':visible')) {
+            cargarCalendario(calYear, calMonth, fechaStr);
+        }
+    } else if ($('#cal-container').is(':visible')) {
+        $('.cal-cell').removeClass('selected');
+        $('.cal-cell[data-fecha="' + fechaStr + '"]').addClass('selected');
     }
 
-    /* Celdas de días */
-    for (let d = 1; d <= diasMes; d++) {
-        const fecha = year + '-'
-            + String(month).padStart(2, '0') + '-'
-            + String(d).padStart(2, '0');
-
-        const info = calData[fecha] || { pagadas: 0, pendientes: 0, atrasadas: 0 };
-
-        let badges = '';
-        if (info.pagadas    > 0) badges += '<span class="cb-p">' + info.pagadas    + '</span>';
-        if (info.pendientes > 0) badges += '<span class="cb-c">' + info.pendientes + '</span>';
-        if (info.atrasadas  > 0) badges += '<span class="cb-a">' + info.atrasadas  + '</span>';
-
-        const classes = ['cal-cell'];
-        if (fecha === todayStr)    classes.push('today');
-        if (fecha === keepSelected) classes.push('selected');
-
-        $grid.append(
-            '<div class="' + classes.join(' ') + '" data-fecha="' + fecha + '">'
-          + '  <div class="cal-dn">' + d + '</div>'
-          + '  <div class="cal-badges">' + badges + '</div>'
-          + '</div>'
-        );
-    }
+    cargarCuotasDia(fechaStr);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════
- * PANEL LATERAL
+ * CUOTAS DEL DÍA
  * ═══════════════════════════════════════════════════════════════════════════════ */
 
-/**
- * Carga y renderiza las cuotas del día seleccionado en el panel.
- * @param {string} fecha  Y-m-d
- */
-function cargarPanelDia(fecha) {
-    const partes = fecha.split('-');
-    const label  = parseInt(partes[2], 10) + ' de '
-                 + MESES[parseInt(partes[1], 10) - 1]
-                 + ' ' + partes[0];
-
-    $('#panel-title').text(label);
-    $('#panel-subtitle').html('<i class="fas fa-spinner fa-spin"></i> Cargando...');
-    $('#panel-placeholder').hide();
-    $('#panel-list').show().html(
-        '<div class="text-center py-3 text-muted">'
-      + '<i class="fas fa-spinner fa-spin fa-lg"></i></div>'
-    );
-    $('#btn-panel-close').show();
+function cargarCuotasDia(fecha) {
+    $('#cuotas-loading').show();
+    $('#panel-list').empty();
+    $('#panel-empty').hide();
+    $('#panel-no-results').hide();
+    $('#resumen-bar').hide();
 
     $.get(BASE_PC + '/dia', { fecha: fecha }, function (data) {
-        const cuotas = data.result || [];
+        var cuotas = data.result || [];
+
+        var nPen  = cuotas.filter(function (c) { return c.estado === 'C'; }).length;
+        var nAtr  = cuotas.filter(function (c) { return c.estado === 'A'; }).length;
+        var nPag  = cuotas.filter(function (c) { return c.estado === 'P' || c.estado === 'T'; }).length;
+        var monto = cuotas
+            .filter(function (c) { return c.estado === 'C' || c.estado === 'A'; })
+            .reduce(function (acc, c) { return acc + parseFloat(c.valor_cuota || 0); }, 0);
+
+        $('#res-pend').text(nPen);
+        $('#res-atra').text(nAtr);
+        $('#res-pago').text(nPag);
+        $('#res-monto').text('$' + monto.toLocaleString('es-CO'));
+        $('#resumen-bar').show();
 
         if (cuotas.length === 0) {
-            $('#panel-subtitle').text('Sin cuotas para este día');
-            $('#panel-search-wrap').hide();
-            $('#panel-filters-wrap').hide();
-            $('#panel-list').html(
-                '<p class="text-center text-muted py-3" style="font-size:13px">'
-              + '<i class="fas fa-check-circle fa-lg d-block mb-1 text-success"></i>'
-              + 'No hay cuotas para este día.</p>'
-            );
+            $('#panel-empty').show();
             return;
         }
 
-        const nPag = cuotas.filter(function (c) { return c.estado === 'P' || c.estado === 'T'; }).length;
-        const nPen = cuotas.filter(function (c) { return c.estado === 'C'; }).length;
-        const nAtr = cuotas.filter(function (c) { return c.estado === 'A'; }).length;
-
-        $('#panel-subtitle').text(
-            cuotas.length + ' cuota(s) · '
-          + nPag + ' pagada(s) · '
-          + nPen + ' pendiente(s) · '
-          + nAtr + ' atrasada(s)'
-        );
-
-        const estadoBadges = {
+        var estadoBadges = {
             C: '<span class="badge badge-warning">Pendiente</span>',
             P: '<span class="badge badge-success">Pagada</span>',
             A: '<span class="badge badge-danger">Atrasada</span>',
             T: '<span class="badge badge-info">Cancelada</span>',
         };
 
-        let html = '';
+        var html = '';
         cuotas.forEach(function (c) {
-            const esPagada = c.estado === 'P' || c.estado === 'T';
-            const badge    = estadoBadges[c.estado] || c.estado;
-            const valor    = parseFloat(c.valor_cuota).toLocaleString('es-CO');
+            var esPagada = c.estado === 'P' || c.estado === 'T';
+            var badge    = estadoBadges[c.estado] || c.estado;
+            var valor    = parseFloat(c.valor_cuota).toLocaleString('es-CO');
 
-            const btnPagar = '<button class="btn btn-xs btn-success cal-pay" data-idd="' + c.idd + '">'
-                           + '<i class="fas fa-money-bill-wave"></i> Pagar</button>';
-            const btnEditar = '<button class="btn btn-xs btn-outline-primary cal-edit" data-idd="' + c.idd + '">'
-                            + '<i class="far fa-edit"></i> Editar</button>';
-            const btnDetalle = '<button class="btn btn-xs btn-outline-secondary cal-detalle ml-1" data-idp="' + c.idp + '">'
-                             + '<i class="fas fa-list-ul"></i></button>';
-            const btnHistorial = '<button class="btn btn-xs btn-outline-info cal-historial ml-1" data-idp="' + c.idp + '">'
-                               + '<i class="fas fa-history"></i></button>';
+            var btnPagar = '<button class="btn btn-xs btn-success cal-pay" data-idd="' + c.idd + '">'
+                         + '<i class="fas fa-money-bill-wave"></i> Pagar</button>';
+            var btnEditar = '<button class="btn btn-xs btn-outline-primary cal-edit" data-idd="' + c.idd + '">'
+                          + '<i class="far fa-edit"></i> Editar</button>';
+            var btnDetalle = '<button class="btn btn-xs btn-outline-secondary cal-detalle ml-1" data-idp="' + c.idp + '">'
+                           + '<i class="fas fa-list-ul"></i></button>';
+            var btnHistorial = '<button class="btn btn-xs btn-outline-info cal-historial ml-1" data-idp="' + c.idp + '">'
+                             + '<i class="fas fa-history"></i></button>';
 
-            const alertaAtraso = (c.cuotas_atrasadas > 0)
+            var alertaAtraso = (c.cuotas_atrasadas > 0)
                 ? '<small class="text-danger"><i class="fas fa-exclamation-triangle"></i> '
                   + c.cuotas_atrasadas + ' atraso(s)</small>'
                 : '';
 
-            const yaSel    = selMasivo && !!seleccionIds[c.idd];
-            const checkHtml = selMasivo && !esPagada
+            var yaSel     = selMasivo && !!seleccionIds[c.idd];
+            var checkHtml = selMasivo && !esPagada
                 ? '<input type="checkbox" class="cuota-check" data-idd="' + c.idd + '"'
                   + (yaSel ? ' checked' : '') + '>'
                 : '';
@@ -817,23 +755,79 @@ function cargarPanelDia(fecha) {
         });
 
         $('#panel-list').html(html);
-        $('#panel-search-wrap').show();
-        $('#panel-filters-wrap').show();
         resetFiltros();
+
     }).fail(function () {
-        $('#panel-subtitle').text('Error al cargar');
         $('#panel-list').html(
             '<p class="text-center text-danger py-3">'
           + '<i class="fas fa-exclamation-circle"></i> No se pudieron cargar las cuotas.</p>'
         );
+    }).always(function () {
+        $('#cuotas-loading').hide();
     });
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * CALENDARIO (mini, colapsable)
+ * ═══════════════════════════════════════════════════════════════════════════════ */
+
+function cargarCalendario(year, month, keepSelected) {
+    $('#cal-titulo').text(MESES[month - 1] + ' ' + year);
+    $('#cal-loading').show();
+    $('#cal-grid').hide().empty();
+
+    $.get(BASE_PC + '/calendario', { mes: month, anio: year }, function (data) {
+        calData = data.result || {};
+        renderizarGrid(year, month, keepSelected);
+    }).fail(function () {
+        calData = {};
+        renderizarGrid(year, month, keepSelected);
+    }).always(function () {
+        $('#cal-loading').hide();
+        $('#cal-grid').show();
+    });
+}
+
+function renderizarGrid(year, month, keepSelected) {
+    var $grid = $('#cal-grid').empty();
+
+    var primerDia = new Date(year, month - 1, 1).getDay();
+    var offset    = primerDia === 0 ? 6 : primerDia - 1;
+    var diasMes   = new Date(year, month, 0).getDate();
+
+    for (var i = 0; i < offset; i++) {
+        $grid.append('<div class="cal-cell empty"></div>');
+    }
+
+    for (var d = 1; d <= diasMes; d++) {
+        var fecha = year + '-'
+            + String(month).padStart(2, '0') + '-'
+            + String(d).padStart(2, '0');
+
+        var info = calData[fecha] || { pagadas: 0, pendientes: 0, atrasadas: 0 };
+
+        var badges = '';
+        if (info.pagadas    > 0) badges += '<span class="cb-p">' + info.pagadas    + '</span>';
+        if (info.pendientes > 0) badges += '<span class="cb-c">' + info.pendientes + '</span>';
+        if (info.atrasadas  > 0) badges += '<span class="cb-a">' + info.atrasadas  + '</span>';
+
+        var classes = ['cal-cell'];
+        if (fecha === todayStr)     classes.push('today');
+        if (fecha === keepSelected) classes.push('selected');
+
+        $grid.append(
+            '<div class="' + classes.join(' ') + '" data-fecha="' + fecha + '">'
+          + '  <div class="cal-dn">' + d + '</div>'
+          + '  <div class="cal-badges">' + badges + '</div>'
+          + '</div>'
+        );
+    }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════
  * HELPERS
  * ═══════════════════════════════════════════════════════════════════════════════ */
 
-/** Rellena el modal de pago con los datos de una cuota. */
 function rellenarModalPago(d) {
     $('#nombres').val((d.nombres || '') + ' ' + (d.apellidos || ''));
     $('#tipo_pago').val(d.tipo_pago || '');
@@ -847,7 +841,6 @@ function rellenarModalPago(d) {
     $('#observacion').val('');
 }
 
-/** Escapa HTML básico para evitar XSS al insertar datos del servidor en innerHTML. */
 function escHtml(str) {
     return String(str || '')
         .replace(/&/g, '&amp;')
