@@ -230,6 +230,7 @@ Route::prefix('admin/v2')
     Route::get('pago-card/calendario',    'PagoController@calendario')       ->name('pago_card.calendario');
     Route::get('pago-card/dia',           'PagoController@cuotasDia')        ->name('pago_card.dia');
     Route::post('pago-card/cambiar-fechas','PagoController@cambiarFechasMasivo')->name('pago_card.cambiar_fechas');
+    Route::get('pago-card/cuotas/{idp}',  'PagoController@cuotasCalendario')  ->name('pago_card.cuotas_cal');
 
     /* Endpoints AJAX — comodines {id} */
     Route::get('pago-card/{id}/edit',    'PagoController@editar')   ->name('pago_card.editar');

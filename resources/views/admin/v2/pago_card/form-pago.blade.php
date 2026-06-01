@@ -166,7 +166,7 @@
       Observación
     </label>
     <input type="text" class="form-control form-control-sm"
-           id="observacion" name="observacion"
+           id="observacion" name="observacion_pago"
            placeholder="Observación opcional"
            aria-label="Observación del pago"
            maxlength="200">

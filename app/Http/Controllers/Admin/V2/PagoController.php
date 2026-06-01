@@ -27,6 +27,22 @@ use Illuminate\Support\Facades\DB;
  */
 class PagoController extends Controller
 {
+    // ─── Helper: crear registro de pago con campos obligatorios ──────────────
+    private function crearPago(Request $request): Pago
+    {
+        return Pago::create([
+            'prestamo_id'      => $request->prestamo_id,
+            'numero_cuota'     => $request->numero_cuota,
+            'valor_cuota'      => $request->valor_cuota,
+            'valor_abono'      => $request->valor_abono,
+            'fecha_pago'       => $request->fecha_pago,
+            'observacion_pago' => $request->observacion_pago ?? '',
+            'abono'            => '1',
+            'sync'             => '1',
+            'usuario_id'       => $request->session()->get('usuario_id'),
+        ]);
+    }
+
     // ─── Helper: "registros no actualizados hoy" ───────────────────────────
     private function whereNoActualizadoHoy(string $campo = 'detalle_prestamo.updated_at'): \Closure
     {
@@ -437,7 +453,7 @@ class PagoController extends Controller
         if ($request->fecha_pago > $hoy) {
 
             if ($request->valor_abono < $vcd && $saldo->monto_atrasado == 0) {
-                Pago::create($request->all());
+                $this->crearPago($request);
                 DB::table('detalle_prestamo')
                     ->where([['prestamo_id',$request->prestamo_id],['d_numero_cuota',$request->numero_cuota]])
                     ->update(['valor_cuota'=>($vcd-$request->valor_abono),'valor_cuota_pagada'=>$request->valor_abono,'estado'=>'C','updated_at'=>now()]);
@@ -447,7 +463,7 @@ class PagoController extends Controller
             }
 
             if ($vcd == $request->valor_abono && $saldo->monto_atrasado == 0) {
-                Pago::create($request->all());
+                $this->crearPago($request);
                 DB::table('detalle_prestamo')
                     ->where([['prestamo_id',$request->prestamo_id],['d_numero_cuota',$request->numero_cuota]])
                     ->update(['valor_cuota_pagada'=>$request->valor_abono,'estado'=>'P','updated_at'=>now()]);
@@ -470,7 +486,7 @@ class PagoController extends Controller
 
             // Pago total del saldo
             if ($request->valor_abono == $saldop) {
-                Pago::create($request->all());
+                $this->crearPago($request);
                 DB::table('detalle_prestamo')->where('prestamo_id',$request->prestamo_id)
                     ->update(['estado'=>'T','updated_at'=>now()]);
                 DB::table('detalle_prestamo')
@@ -487,7 +503,7 @@ class PagoController extends Controller
 
             // Abono parcial (genera atraso)
             if ($request->valor_abono == 0 || $request->valor_abono < $vcd) {
-                Pago::create($request->all());
+                $this->crearPago($request);
                 DB::table('detalle_prestamo')
                     ->where([['prestamo_id',$request->prestamo_id],['d_numero_cuota',$request->numero_cuota]])
                     ->update(['estado'=>'A','valor_cuota_pagada'=>$request->valor_abono,'updated_at'=>now()]);
@@ -505,7 +521,7 @@ class PagoController extends Controller
                 $sa       = Prestamo::where('idp',$request->prestamo_id)->first();
                 $abonoat  = $request->valor_abono - $vcd;
                 if ($sa->cuotas_atrasadas > 0) {
-                    Pago::create($request->all());
+                    $this->crearPago($request);
                     DB::table('detalle_prestamo')
                         ->where([['prestamo_id',$request->prestamo_id],['d_numero_cuota',$request->numero_cuota]])
                         ->update(['estado'=>'P','valor_cuota_pagada'=>$request->valor_abono,'updated_at'=>now()]);
@@ -523,7 +539,7 @@ class PagoController extends Controller
 
             // Pago exacto de cuota
             if ($vcd == $request->valor_abono) {
-                Pago::create($request->all());
+                $this->crearPago($request);
                 DB::table('detalle_prestamo')
                     ->where([['prestamo_id',$request->prestamo_id],['d_numero_cuota',$request->numero_cuota]])
                     ->update(['estado'=>'P','valor_cuota_pagada'=>$request->valor_abono,'updated_at'=>now()]);
@@ -551,7 +567,7 @@ class PagoController extends Controller
             $pagoqa  = $pagoa->valor_abono;
 
             if ($request->valor_abono == $request->vatraso) {
-                Pago::create($request->all());
+                $this->crearPago($request);
                 DB::table('detalle_prestamo')
                     ->where([['prestamo_id',$request->prestamo_id],['d_numero_cuota',$request->numero_cuota]])
                     ->update(['estado'=>'P','valor_cuota_pagada'=>($pagoqa+$request->valor_abono),'updated_at'=>now()]);
@@ -564,7 +580,7 @@ class PagoController extends Controller
             }
 
             if ($request->valor_abono < $request->vatraso && $request->valor_abono > 0) {
-                Pago::create($request->all());
+                $this->crearPago($request);
                 DB::table('detalle_prestamo')
                     ->where([['prestamo_id',$request->prestamo_id],['d_numero_cuota',$request->numero_cuota]])
                     ->update(['estado'=>'A','valor_cuota_pagada'=>($pagoqa+$request->valor_abono),'updated_at'=>now()]);
@@ -631,7 +647,13 @@ class PagoController extends Controller
             DB::table('detalle_prestamo')
                 ->where([['prestamo_id',$request->prestamo_id],['d_numero_cuota',$request->numero_cuota]])
                 ->update(['estado'=>'A','valor_cuota_pagada'=>$request->valor_abono,'updated_at'=>now()]);
-            $pago->update($request->all());
+            $pago->update([
+                    'valor_cuota'      => $request->valor_cuota,
+                    'valor_abono'      => $request->valor_abono,
+                    'numero_cuota'     => $request->numero_cuota,
+                    'fecha_pago'       => $request->fecha_pago,
+                    'observacion_pago' => $request->observacion_pago ?? '',
+                ]);
             $sa3 = Prestamo::where('idp',$request->prestamo_id)->first();
             DB::table('prestamo')->where('idp',$request->prestamo_id)->update([
                 'monto_atrasado'=>($sa3->monto_atrasado+($request->valor_cuota-$request->valor_abono)),
@@ -645,7 +667,13 @@ class PagoController extends Controller
                 DB::table('detalle_prestamo')
                     ->where([['prestamo_id',$request->prestamo_id],['d_numero_cuota',$request->numero_cuota]])
                     ->update(['estado'=>'P','valor_cuota_pagada'=>$request->valor_abono,'updated_at'=>now()]);
-                $pago->update($request->all());
+                $pago->update([
+                    'valor_cuota'      => $request->valor_cuota,
+                    'valor_abono'      => $request->valor_abono,
+                    'numero_cuota'     => $request->numero_cuota,
+                    'fecha_pago'       => $request->fecha_pago,
+                    'observacion_pago' => $request->observacion_pago ?? '',
+                ]);
                 DB::table('prestamo')->where('idp',$request->prestamo_id)->update([
                     'monto_atrasado'=>($sa2->monto_atrasado-$abonoat),
                     'cuotas_atrasadas'=>($sa2->cuotas_atrasadas-$cuotasatdesc),
@@ -655,7 +683,13 @@ class PagoController extends Controller
                 DB::table('detalle_prestamo')
                     ->where([['prestamo_id',$request->prestamo_id],['d_numero_cuota',$request->numero_cuota]])
                     ->update(['estado'=>'P','valor_cuota_pagada'=>$request->valor_abono,'updated_at'=>now()]);
-                $pago->update($request->all());
+                $pago->update([
+                    'valor_cuota'      => $request->valor_cuota,
+                    'valor_abono'      => $request->valor_abono,
+                    'numero_cuota'     => $request->numero_cuota,
+                    'fecha_pago'       => $request->fecha_pago,
+                    'observacion_pago' => $request->observacion_pago ?? '',
+                ]);
                 DB::table('prestamo')->where('idp',$request->prestamo_id)->update([
                     'monto_pendiente'=>($saldop-$request->valor_abono),
                     'longitud'=>($request->valor_abono-$vcd),'updated_at'=>now(),
@@ -667,7 +701,13 @@ class PagoController extends Controller
             DB::table('detalle_prestamo')
                 ->where([['prestamo_id',$request->prestamo_id],['d_numero_cuota',$request->numero_cuota]])
                 ->update(['estado'=>'P','valor_cuota_pagada'=>$request->valor_abono,'updated_at'=>now()]);
-            $pago->update($request->all());
+            $pago->update([
+                    'valor_cuota'      => $request->valor_cuota,
+                    'valor_abono'      => $request->valor_abono,
+                    'numero_cuota'     => $request->numero_cuota,
+                    'fecha_pago'       => $request->fecha_pago,
+                    'observacion_pago' => $request->observacion_pago ?? '',
+                ]);
             DB::table('prestamo')->where('idp',$request->prestamo_id)
                 ->update(['monto_pendiente'=>($saldop-$request->valor_abono),'updated_at'=>now()]);
         }
@@ -723,6 +763,39 @@ class PagoController extends Controller
         }
 
         return response()->json(['result' => $dias]);
+    }
+
+    /**
+     * Todas las cuotas de un préstamo para el modal-calendario.
+     * GET /admin/v2/pago-card/cuotas/{idp}
+     */
+    public function cuotasCalendario(Request $request, int $idp): JsonResponse
+    {
+        $uid = $request->session()->get('usuario_id');
+
+        $rows = DB::table('detalle_prestamo')
+            ->join('prestamo', 'detalle_prestamo.prestamo_id', '=', 'prestamo.idp')
+            ->join('cliente',  'prestamo.cliente_id',          '=', 'cliente.id')
+            ->where('prestamo.usuario_id', $uid)
+            ->where('prestamo.idp', $idp)
+            ->whereNull('prestamo.delete_at')
+            ->select(
+                'detalle_prestamo.idd',
+                'detalle_prestamo.d_numero_cuota',
+                'detalle_prestamo.fecha_cuota',
+                'detalle_prestamo.estado',
+                'detalle_prestamo.valor_cuota',
+                'detalle_prestamo.valor_cuota_pagada',
+                'prestamo.monto_atrasado',
+                'prestamo.tipo_pago',
+                'prestamo.idp',
+                'cliente.nombres',
+                'cliente.apellidos'
+            )
+            ->orderBy('detalle_prestamo.d_numero_cuota')
+            ->get();
+
+        return response()->json(['result' => $rows]);
     }
 
     /**

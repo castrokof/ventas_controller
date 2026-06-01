@@ -52,6 +52,16 @@ const todayStr = new Date().toISOString().slice(0, 10);
 var selMasivo    = false;
 var seleccionIds = {};
 
+/* ── Estado modal cuotas préstamo ───────────────────────────────────────────── */
+var mcpIdp      = null;
+var mcpNombre   = '';
+var mcpCuotas   = [];
+var mcpCalYear  = new Date().getFullYear();
+var mcpCalMonth = new Date().getMonth() + 1;
+var mcpFiltro   = 'all';
+var mcpDia      = null;
+var mcpSel      = {};
+
 function selBarActualizar() {
     var n = Object.keys(seleccionIds).length;
     if (n === 0) {
@@ -630,6 +640,99 @@ $(function () {
         $('#cf-feedback').hide().text('');
     });
 
+    /* ════════════════════════════════════════════════════════════════════════
+     * MODAL CUOTAS DEL PRÉSTAMO (calendario + adelantos)
+     * ════════════════════════════════════════════════════════════════════════ */
+
+    /* Abrir al clicar nombre / crédito en la cuota card */
+    $(document).on('click', '.cc-info-link', function (e) {
+        if (selMasivo) return; /* no abrir en modo masivo */
+        var idp    = $(this).data('idp');
+        var nombre = $(this).data('nombre');
+        abrirCuotasPrestamo(idp, nombre);
+    });
+
+    /* Navegación de mes en el mini-calendario del modal */
+    $(document).on('click', '#mcp-prev-mes', function () {
+        mcpCalMonth--;
+        if (mcpCalMonth < 1) { mcpCalMonth = 12; mcpCalYear--; }
+        mcpRenderCalendario();
+    });
+    $(document).on('click', '#mcp-next-mes', function () {
+        mcpCalMonth++;
+        if (mcpCalMonth > 12) { mcpCalMonth = 1; mcpCalYear++; }
+        mcpRenderCalendario();
+    });
+
+    /* Clic en día del mini-calendario del modal */
+    $(document).on('click', '#mcp-cal-grid .cal-cell:not(.empty)', function () {
+        var f = $(this).data('fecha');
+        if (!f) return;
+        mcpDia = f;
+        $('#mcp-cal-grid .cal-cell').removeClass('selected');
+        $(this).addClass('selected');
+        var partes = f.split('-');
+        $('#mcp-dia-lbl span').text(parseInt(partes[2], 10) + ' de ' + MESES[parseInt(partes[1], 10) - 1] + ' ' + partes[0]);
+        $('#mcp-dia-lbl').show();
+        mcpRenderLista();
+    });
+
+    /* Quitar filtro de día */
+    $(document).on('click', '#mcp-limpiar-dia', function (e) {
+        e.preventDefault();
+        mcpDia = null;
+        $('#mcp-cal-grid .cal-cell').removeClass('selected');
+        $('#mcp-dia-lbl').hide();
+        mcpRenderLista();
+    });
+
+    /* Filtros de estado en modal */
+    $(document).on('click', '[data-mcp-filter]', function () {
+        $('[data-mcp-filter]').removeClass('active');
+        $(this).addClass('active');
+        mcpFiltro = $(this).data('mcp-filter');
+        mcpRenderLista();
+    });
+
+    /* Checkbox cuota futura en modal */
+    $(document).on('change', '.mcp-check', function () {
+        var idd   = $(this).data('idd');
+        var cuota = mcpCuotas.filter(function (c) { return c.idd == idd; })[0];
+        if (!cuota) return;
+        if ($(this).is(':checked')) {
+            mcpSel[idd] = cuota;
+        } else {
+            delete mcpSel[idd];
+        }
+        $(this).closest('.mcp-row').toggleClass('mcp-sel', $(this).is(':checked'));
+        mcpActualizarFooter();
+    });
+
+    /* Botón pagar seleccionadas */
+    $(document).on('click', '#btn-mcp-pagar', function () {
+        var n = Object.keys(mcpSel).length;
+        if (!n) return;
+        Swal.fire({
+            title: '¿Pagar ' + n + ' cuota(s)?',
+            html: 'Se registrará el valor completo de cada cuota como adelanto.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, pagar',
+            cancelButtonText: 'Cancelar',
+        }).then(function (res) {
+            if (res.value) mcpPagarSeleccionadas();
+        });
+    });
+
+    /* Limpiar modal al cerrar */
+    $('#modal-cuotas-prestamo').on('hidden.bs.modal', function () {
+        mcpSel = {};
+        mcpDia = null;
+        mcpFiltro = 'all';
+        $('#mcp-progreso').hide().html('');
+        $('#mcp-dia-lbl').hide();
+    });
+
 });
 
 /* ═══════════════════════════════════════════════════════════════════════════════
@@ -739,8 +842,10 @@ function cargarCuotasDia(fecha) {
                           + '  <div class="d-flex align-items-start justify-content-between">'
                           + '    ' + checkHtml
                           + '    <div style="flex:1;min-width:0">'
-                          + '      <div class="cc-name text-truncate">' + escHtml(c.nombres) + ' ' + escHtml(c.apellidos) + '</div>'
-                          + '      <div class="cc-meta">Crédito #' + c.idp + ' · Cuota #' + c.d_numero_cuota + '</div>'
+                          + '      <div class="cc-info-link" data-idp="' + c.idp + '" data-nombre="' + escHtml(c.nombres + ' ' + c.apellidos) + '">'
+                          + '        <div class="cc-name text-truncate">' + escHtml(c.nombres) + ' ' + escHtml(c.apellidos) + '</div>'
+                          + '        <div class="cc-meta">Crédito #' + c.idp + ' · Cuota #' + c.d_numero_cuota + '</div>'
+                          + '      </div>'
                           + '      <div class="cc-meta">' + escHtml(c.tipo_pago || '') + '</div>'
                           + '    </div>'
                           + '    <div class="text-right ml-2" style="flex-shrink:0">'
@@ -862,4 +967,270 @@ function escHtml(str) {
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;');
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * MODAL CUOTAS DEL PRÉSTAMO
+ * ═══════════════════════════════════════════════════════════════════════════════ */
+
+function abrirCuotasPrestamo(idp, nombre, reload) {
+    mcpIdp    = idp;
+    mcpNombre = nombre || ('Crédito #' + idp);
+    if (!reload) {
+        mcpCuotas   = [];
+        mcpSel      = {};
+        mcpDia      = null;
+        mcpFiltro   = 'all';
+        mcpCalYear  = new Date().getFullYear();
+        mcpCalMonth = new Date().getMonth() + 1;
+        $('[data-mcp-filter]').removeClass('active');
+        $('[data-mcp-filter="all"]').addClass('active');
+    }
+
+    $('#mcp-titulo').text('Crédito #' + idp + ' — ' + nombre);
+    $('#mcp-subtitulo').text('Cargando...');
+    $('#mcp-loading').show().html('<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x text-primary"></i></div>');
+    $('#mcp-content').hide();
+    $('#mcp-footer').hide();
+    $('#mcp-progreso').hide().html('');
+    $('#mcp-dia-lbl').hide();
+
+    if (!reload) {
+        $('#modal-cuotas-prestamo').modal('show');
+    }
+
+    $.ajax({
+        url:      BASE_PC + '/cuotas/' + idp,
+        method:   'GET',
+        dataType: 'json',
+        success: function (data) {
+            mcpCuotas = ((data || {}).result) || [];
+
+            /* Ir al mes de la primera cuota C futura */
+            if (!reload) {
+                var futura = null;
+                for (var i = 0; i < mcpCuotas.length; i++) {
+                    var c = mcpCuotas[i];
+                    if (c.estado === 'C' && c.fecha_cuota > todayStr) { futura = c; break; }
+                }
+                if (futura) {
+                    var p = futura.fecha_cuota.split('-');
+                    mcpCalYear  = parseInt(p[0], 10);
+                    mcpCalMonth = parseInt(p[1], 10);
+                }
+            }
+
+            var nPend = mcpCuotas.filter(function (c) { return c.estado === 'C'; }).length;
+            var nAtr  = mcpCuotas.filter(function (c) { return c.estado === 'A'; }).length;
+            $('#mcp-subtitulo').text(
+                mcpCuotas.length + ' cuotas · ' + nPend + ' pendientes · ' + nAtr + ' atrasadas'
+            );
+
+            mcpRenderCalendario();
+            mcpRenderLista();
+            mcpActualizarFooter();
+            $('#mcp-loading').hide();
+            $('#mcp-content').show();
+            $('#mcp-footer').css('display', 'flex');
+        },
+        error: function () {
+            $('#mcp-loading').html(
+                '<p class="text-center text-danger py-3">'
+              + '<i class="fas fa-exclamation-circle"></i> Error al cargar las cuotas.</p>'
+            );
+        }
+    });
+}
+
+function mcpRenderCalendario() {
+    var year  = mcpCalYear;
+    var month = mcpCalMonth;
+    $('#mcp-cal-titulo').text(MESES[month - 1] + ' ' + year);
+
+    /* Agrupar cuotas por fecha */
+    var porFecha = {};
+    mcpCuotas.forEach(function (c) {
+        if (!porFecha[c.fecha_cuota]) {
+            porFecha[c.fecha_cuota] = { C: 0, A: 0, P: 0, T: 0 };
+        }
+        porFecha[c.fecha_cuota][c.estado] = (porFecha[c.fecha_cuota][c.estado] || 0) + 1;
+    });
+
+    var $grid     = $('#mcp-cal-grid').empty();
+    var primerDia = new Date(year, month - 1, 1).getDay();
+    var offset    = primerDia === 0 ? 6 : primerDia - 1;
+    var diasMes   = new Date(year, month, 0).getDate();
+
+    for (var i = 0; i < offset; i++) {
+        $grid.append('<div class="cal-cell empty"></div>');
+    }
+
+    for (var d = 1; d <= diasMes; d++) {
+        var fecha = year + '-'
+            + String(month).padStart(2, '0') + '-'
+            + String(d).padStart(2, '0');
+
+        var info   = porFecha[fecha] || {};
+        var badges = '';
+        if (info.P > 0 || info.T > 0) badges += '<span class="cb-p">' + ((info.P || 0) + (info.T || 0)) + '</span>';
+        if (info.C > 0)               badges += '<span class="cb-c">' + info.C + '</span>';
+        if (info.A > 0)               badges += '<span class="cb-a">' + info.A + '</span>';
+
+        var classes = ['cal-cell'];
+        if (!badges)          classes.push('cal-cell-dim');
+        if (fecha === todayStr) classes.push('today');
+        if (fecha === mcpDia)   classes.push('selected');
+
+        $grid.append(
+            '<div class="' + classes.join(' ') + '" data-fecha="' + fecha + '">'
+          + '  <div class="cal-dn">' + d + '</div>'
+          + '  <div class="cal-badges">' + badges + '</div>'
+          + '</div>'
+        );
+    }
+}
+
+function mcpRenderLista() {
+    var filtradas = mcpCuotas.filter(function (c) {
+        var matchEstado = mcpFiltro === 'all'
+            || c.estado === mcpFiltro
+            || (mcpFiltro === 'P' && c.estado === 'T');
+        var matchDia = !mcpDia || c.fecha_cuota === mcpDia;
+        return matchEstado && matchDia;
+    });
+
+    if (!filtradas.length) {
+        $('#mcp-lista').html(
+            '<p class="text-center text-muted py-3" style="font-size:12px">'
+          + '<i class="fas fa-search mr-1"></i>Sin resultados.</p>'
+        );
+        return;
+    }
+
+    var estadoBadges = {
+        C: '<span class="badge badge-warning">Pendiente</span>',
+        P: '<span class="badge badge-success">Pagada</span>',
+        A: '<span class="badge badge-danger">Atrasada</span>',
+        T: '<span class="badge badge-info">Cancelada</span>',
+    };
+
+    var html = '';
+    filtradas.forEach(function (c) {
+        var esPagada  = c.estado === 'P' || c.estado === 'T';
+        var esFuturaC = c.estado === 'C' && c.fecha_cuota > todayStr;
+        var badge     = estadoBadges[c.estado] || c.estado;
+        var valor     = parseFloat(c.valor_cuota || 0).toLocaleString('es-CO');
+        var yaSel     = !!mcpSel[c.idd];
+
+        /* Fecha corta: "1 Jun" */
+        var fp   = c.fecha_cuota.split('-');
+        var fLbl = parseInt(fp[2], 10) + ' ' + MESES[parseInt(fp[1], 10) - 1].slice(0, 3);
+
+        var checkHtml = esFuturaC
+            ? '<input type="checkbox" class="mcp-check" data-idd="' + c.idd + '"' + (yaSel ? ' checked' : '') + '>'
+            : '<span style="width:16px;display:inline-block;flex-shrink:0"></span>';
+
+        var acciones = '';
+        if (!esPagada) {
+            acciones = '<button class="btn btn-xs btn-success cal-pay ml-1" data-idd="' + c.idd + '" title="Pagar cuota">'
+                     + '<i class="fas fa-money-bill-wave"></i></button>';
+        }
+
+        html += '<div class="mcp-row ec-' + c.estado + (yaSel ? ' mcp-sel' : '') + '">'
+              + checkHtml
+              + '<span class="mcp-date">' + fLbl + '</span>'
+              + '<span class="mcp-num">#' + c.d_numero_cuota + '</span>'
+              + badge
+              + '<span class="mcp-val">$' + valor + '</span>'
+              + acciones
+              + '</div>';
+    });
+
+    $('#mcp-lista').html(html);
+}
+
+function mcpActualizarFooter() {
+    var lista = Object.values(mcpSel);
+    var n     = lista.length;
+    var monto = lista.reduce(function (a, c) { return a + parseFloat(c.valor_cuota || 0); }, 0);
+
+    if (n === 0) {
+        $('#mcp-sel-info').text('Toca el checkbox de una cuota futura para seleccionar');
+        $('#btn-mcp-pagar').prop('disabled', true);
+    } else {
+        $('#mcp-sel-info').text(n + ' cuota(s) · $' + monto.toLocaleString('es-CO'));
+        $('#btn-mcp-pagar').prop('disabled', false);
+    }
+}
+
+function mcpPagarSeleccionadas() {
+    var lista = Object.values(mcpSel);
+    if (!lista.length) return;
+
+    /* Ordenar por número de cuota */
+    lista.sort(function (a, b) { return a.d_numero_cuota - b.d_numero_cuota; });
+
+    $('#btn-mcp-pagar').prop('disabled', true);
+    $('#mcp-progreso').show();
+
+    var idx  = 0;
+    var ok   = 0;
+    var fail = 0;
+    var csrf = $('meta[name="csrf-token"]').attr('content')
+            || $('input[name="_token"]').first().val();
+
+    function siguiente() {
+        if (idx >= lista.length) {
+            var msg = '<i class="fas fa-check-circle text-success mr-1"></i>'
+                    + ok + ' cuota(s) pagada(s)';
+            if (fail) msg += ' · <span class="text-danger">' + fail + ' con error</span>';
+            $('#mcp-progreso').html(msg);
+            mcpSel = {};
+            mcpActualizarFooter();
+            /* Recargar modal y lista principal */
+            setTimeout(function () {
+                abrirCuotasPrestamo(mcpIdp, mcpNombre, true);
+            }, 1200);
+            if (selDate) cargarCuotasDia(selDate);
+            if ($('#cal-container').is(':visible')) {
+                cargarCalendario(calYear, calMonth, selDate);
+            }
+            return;
+        }
+
+        var c = lista[idx++];
+        $('#mcp-progreso').html(
+            '<i class="fas fa-spinner fa-spin mr-1"></i>Pagando cuota #' + c.d_numero_cuota
+          + ' (' + idx + '/' + lista.length + ')...'
+        );
+
+        $.ajax({
+            url:      BASE_PC + '/guardar',
+            method:   'POST',
+            dataType: 'json',
+            data: {
+                _token:       csrf,
+                prestamo_id:  c.idp,
+                numero_cuota: c.d_numero_cuota,
+                valor_cuota:  c.valor_cuota,
+                valor_abono:  c.valor_cuota,
+                estado_cuota: 'C',
+                fecha_pago:   c.fecha_cuota,
+                vatraso:      0,
+                observacion_pago: ''
+            },
+            success: function (resp) {
+                var errores = ['error','noadelanto','noa','adelantos','vcda','adelantosa','okcaerror'];
+                if (errores.includes(resp.success)) fail++;
+                else ok++;
+                siguiente();
+            },
+            error: function () {
+                fail++;
+                siguiente();
+            }
+        });
+    }
+
+    siguiente();
 }
