@@ -685,7 +685,6 @@ class PagoController extends Controller
      */
     public function calendario(Request $request): JsonResponse
     {
-        if (!$request->ajax()) abort(403);
         $uid  = $request->session()->get('usuario_id');
         $mes  = (int) ($request->mes  ?? Carbon::today()->month);
         $anio = (int) ($request->anio ?? Carbon::today()->year);
@@ -732,7 +731,6 @@ class PagoController extends Controller
      */
     public function cuotasDia(Request $request): JsonResponse
     {
-        if (!$request->ajax()) abort(403);
         $uid   = $request->session()->get('usuario_id');
         $fecha = $request->fecha ?? $this->hoy();
 
@@ -773,7 +771,6 @@ class PagoController extends Controller
      */
     public function editar(Request $request, int $id): JsonResponse
     {
-        if (!$request->ajax()) abort(403);
         $uid = $request->session()->get('usuario_id');
 
         $base = DB::table('prestamo')
@@ -806,7 +803,6 @@ class PagoController extends Controller
      */
     public function editarp(Request $request, int $id): JsonResponse
     {
-        if (!$request->ajax()) abort(403);
         $uid = $request->session()->get('usuario_id');
         $idf = $request->idf;
 
@@ -841,7 +837,6 @@ class PagoController extends Controller
      */
     public function editpay(Request $request, int $id): JsonResponse
     {
-        if (!$request->ajax()) abort(403);
         $uid = $request->session()->get('usuario_id');
 
         $data = DB::table('prestamo')
@@ -867,8 +862,6 @@ class PagoController extends Controller
      */
     public function detalle(int $id): JsonResponse
     {
-        if (!request()->ajax()) abort(403);
-
         $pagos = DB::table('pago')->where('prestamo_id', $id)->get();
         return response()->json(['result1' => $pagos]);
     }

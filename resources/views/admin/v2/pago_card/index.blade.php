@@ -91,9 +91,12 @@
 </style>
 @endsection
 
-@section('scripts')
+@section("scriptsPlugins")
+<script src="{{asset("assets/$theme/plugins/datatables/jquery.dataTables.js")}}"></script>
+<script src="{{asset("assets/$theme/plugins/datatables-bs4/js/dataTables.bootstrap4.js")}}"></script>
+<script src="{{asset("assets/$theme/plugins/datatables-responsive/js/dataTables.responsive.min.js")}}"></script>
 <script>
-window.CAL_BASE = '/admin/v2/pago-card';
+window.CAL_BASE = '{{ url("admin/v2/pago-card") }}';
 </script>
 <script src="{{ asset('assets/pages/scripts/admin/v2/pago_card/calendar.js') }}" type="text/javascript"></script>
 @endsection
