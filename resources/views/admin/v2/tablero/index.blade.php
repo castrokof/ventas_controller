@@ -133,7 +133,7 @@
       </div>
     </div>
   </div>
-
+@php $rolV3 = session('rol_nombre'); @endphp
   {{-- Accesos rápidos --}}
   <div class="col-12 col-md-8 mb-3">
     <div class="card shadow-sm h-100">
@@ -143,6 +143,9 @@
           Accesos rápidos
         </h6>
       </div>
+
+      
+      @if($rolV3 === 'administrador' || $rolV3 === 'empresa' || $rolV3 === 'empleado') 
       <div class="card-body">
         <div class="row">
 
@@ -166,14 +169,14 @@
               <div style="font-size:.8rem; font-weight:600">Ruta / Cobros</div>
             </a>
           </div>
-
+  @if($rolV3 !== 'empleado')
           <div class="col-6 col-md-4 mb-2">
             <a href="{{ route('admin.v2.empleado.index') }}" class="module-card p-3 text-center">
               <i class="fas fa-id-badge fa-2x text-primary mb-1" aria-hidden="true"></i>
               <div style="font-size:.8rem; font-weight:600">Empleados</div>
             </a>
           </div>
-
+  @endif
           <div class="col-6 col-md-4 mb-2">
             <a href="{{ route('admin.v2.gasto.index') }}" class="module-card p-3 text-center">
               <i class="fas fa-receipt fa-2x text-danger mb-1" aria-hidden="true"></i>
@@ -187,7 +190,7 @@
               <div style="font-size:.8rem; font-weight:600">Dashboard</div>
             </a>
           </div>
-
+ @endif
         </div>
       </div>
     </div>
