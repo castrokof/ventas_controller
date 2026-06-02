@@ -135,6 +135,28 @@
   </div>
 </div>
 
+{{-- Modal calificación cliente --}}
+<div class="modal fade" id="modal-calificacion" tabindex="-1" role="dialog" aria-modal="true">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-dark">
+        <h5 class="modal-title text-white">
+          <i class="fas fa-star mr-1"></i>Calificación del cliente
+        </h5>
+        <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+      </div>
+      <div class="modal-body" id="contenido-calificacion">
+        <div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x"></i></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">
+          <i class="fas fa-times mr-1"></i>Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 {{-- Modal detalle préstamos --}}
 <div class="modal fade" id="modal-detalle" tabindex="-1" role="dialog" aria-modal="true">
   <div class="modal-dialog" role="document">
@@ -233,6 +255,7 @@ $(function () {
                         + '<button class="btn btn-primary edit" id="' + d.id + '"><i class="far fa-edit mr-1"></i>Editar</button>'
                         + '<button class="btn btn-warning prestamo" id="' + d.id + '"><i class="fas fa-plus-circle mr-1"></i>Préstamo</button>'
                         + '<button class="btn btn-success detalle" id="' + d.id + '"><i class="fas fa-atlas"></i></button>'
+                        + '<button class="btn btn-dark calificacion" id="' + d.id + '"><i class="fas fa-star"></i></button>'
                         + '</div></div>';
                 });
                 $('#mobile-cards-cli').html(html);
@@ -335,6 +358,78 @@ $(function () {
                 $('#contenido-detalle').html(h);
             },
             error:function(){$('#contenido-detalle').html('<p class="text-danger text-center">Error.</p>');}
+        });
+    });
+
+    /* ── Calificación ───────────────────────────── */
+    $(document).on('click', '.calificacion', function () {
+        var id = $(this).attr('id');
+        $('#contenido-calificacion').html('<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x"></i></div>');
+        $('#modal-calificacion').modal('show');
+        $.ajax({
+            url: '{{ url("admin/v2/cliente") }}/' + id + '/calificacion',
+            dataType: 'json',
+            success: function(d) {
+                var nivelClass = {A:'success', B:'primary', C:'warning', D:'danger'}[d.nivel] || 'secondary';
+                var scoreColor = d.score >= 90 ? '#28a745' : d.score >= 75 ? '#007bff' : d.score >= 55 ? '#ffc107' : '#dc3545';
+                var html = '<div class="mb-3">'
+                    + '<h5 class="font-weight-bold mb-0">' + d.cliente + '</h5>'
+                    + '<small class="text-muted">Documento: ' + d.documento + '</small>'
+                    + '</div>'
+                    + '<div class="d-flex align-items-center mb-3">'
+                    + '<div class="mr-3 text-center" style="min-width:80px">'
+                    + '<div style="font-size:2.8rem;font-weight:bold;color:' + scoreColor + ';line-height:1">' + d.score + '</div>'
+                    + '<div class="text-muted" style="font-size:.7rem">/ 100</div>'
+                    + '</div>'
+                    + '<div class="flex-grow-1">'
+                    + '<div class="progress mb-2" style="height:16px;border-radius:8px">'
+                    + '<div class="progress-bar bg-' + nivelClass + '" style="width:' + d.score + '%;transition:width .6s ease"></div>'
+                    + '</div>'
+                    + '<span class="badge badge-' + nivelClass + ' badge-pill px-3 py-1" style="font-size:.85rem">'
+                    + d.calificacion + '</span>'
+                    + '</div>'
+                    + '</div>'
+                    + '<div class="row text-center mb-3">'
+                    + '<div class="col-6 col-sm-3 mb-2"><div class="border rounded p-2 h-100"><div class="font-weight-bold text-primary h5 mb-0">' + d.total_prestamos + '</div><small class="text-muted">Préstamos</small></div></div>'
+                    + '<div class="col-6 col-sm-3 mb-2"><div class="border rounded p-2 h-100"><div class="font-weight-bold text-success h5 mb-0">' + d.pagadas + '</div><small class="text-muted">Pagadas</small></div></div>'
+                    + '<div class="col-6 col-sm-3 mb-2"><div class="border rounded p-2 h-100"><div class="font-weight-bold text-danger h5 mb-0">' + d.atrasadas + '</div><small class="text-muted">Atrasadas</small></div></div>'
+                    + '<div class="col-6 col-sm-3 mb-2"><div class="border rounded p-2 h-100"><div class="font-weight-bold text-warning h5 mb-0">' + d.pendientes + '</div><small class="text-muted">Pendientes</small></div></div>'
+                    + '</div>'
+                    + '<div class="row text-center mb-3 small text-muted">'
+                    + '<div class="col-6">Monto total: <strong>$ ' + Number(d.monto_total).toLocaleString() + '</strong></div>'
+                    + '<div class="col-6">Pagado: <strong>$ ' + Number(d.monto_pagado).toLocaleString() + '</strong></div>'
+                    + '</div>';
+                if (d.prestamos && d.prestamos.length) {
+                    html += '<h6 class="font-weight-bold border-bottom pb-1 mb-2"><i class="fas fa-list mr-1"></i>Historial de préstamos</h6>'
+                        + '<div class="table-responsive"><table class="table table-sm table-hover mb-0">'
+                        + '<thead class="thead-light"><tr>'
+                        + '<th>#</th><th>Monto</th><th>Cuotas</th><th>Tipo</th><th>Fecha</th>'
+                        + '<th class="text-success">Pag.</th><th class="text-danger">Atr.</th><th>Estado</th>'
+                        + '</tr></thead><tbody>';
+                    d.prestamos.forEach(function(p) {
+                        var est = p.estado_prestamo === 'P'
+                            ? '<span class="badge badge-success">Saldado</span>'
+                            : p.estado_prestamo === 'A'
+                            ? '<span class="badge badge-danger">Anulado</span>'
+                            : '<span class="badge badge-primary">Activo</span>';
+                        html += '<tr>'
+                            + '<td>' + p.idp + '</td>'
+                            + '<td>$' + Number(p.monto).toLocaleString() + '</td>'
+                            + '<td>' + p.cuotas + '</td>'
+                            + '<td>' + (p.tipo_pago || '—') + '</td>'
+                            + '<td>' + (p.fecha_inicial || '—') + '</td>'
+                            + '<td class="text-success font-weight-bold">' + p.dp_pagadas + '</td>'
+                            + '<td class="text-danger font-weight-bold">' + p.dp_atrasadas + '</td>'
+                            + '<td>' + est + '</td>'
+                            + '</tr>';
+                    });
+                    html += '</tbody></table></div>';
+                }
+                $('#contenido-calificacion').html(html);
+            },
+            error: function() {
+                $('#contenido-calificacion').html('<p class="text-danger text-center"><i class="fas fa-exclamation-triangle mr-1"></i>Error al cargar la calificación.</p>');
+            }
         });
     });
 

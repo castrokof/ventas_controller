@@ -59,6 +59,28 @@ class PagoController extends Controller
         return Carbon::today()->toDateString();
     }
 
+    // ─── Helper: usuario_ids visibles según rol ────────────────────────────
+    private function scopeUsuarioIds(): array
+    {
+        $uid    = (int) session('usuario_id');
+        $rol_id = (int) session('rol_id');
+
+        if ($rol_id === 2) {
+            $emp_id     = session('empleado_id');
+            $empresa_id = DB::table('empleado')->where('ide', $emp_id)->value('empresa_id');
+            if ($empresa_id) {
+                $ids = DB::table('usuario')
+                    ->join('empleado', 'usuario.empleado_id', '=', 'empleado.ide')
+                    ->where('empleado.empresa_id', $empresa_id)
+                    ->pluck('usuario.id')
+                    ->toArray();
+                return $ids ?: [$uid];
+            }
+        }
+
+        return [$uid];
+    }
+
     // ─── Helper: rango completo del día ───────────────────────────────────
     private function rangoHoy(): array
     {
@@ -283,8 +305,8 @@ class PagoController extends Controller
      */
     public function listaPrestamos(Request $request): JsonResponse
     {
-        $uid = $request->session()->get('usuario_id');
-        $hoy = $this->hoy();
+        $uids = $this->scopeUsuarioIds();
+        $hoy  = $this->hoy();
 
         $rows = DB::table('prestamo')
             ->join('cliente', 'prestamo.cliente_id', '=', 'cliente.id')
@@ -293,7 +315,7 @@ class PagoController extends Controller
                      ->where('dp_hoy.fecha_cuota', '=', $hoy)
                      ->whereIn('dp_hoy.estado', ['C', 'A']);
             })
-            ->where('prestamo.usuario_id', $uid)
+            ->whereIn('prestamo.usuario_id', $uids)
             ->where('prestamo.monto_pendiente', '>', 0)
             ->where('prestamo.estado', '!=', 'P')
             ->whereNull('prestamo.delete_at')
@@ -824,6 +846,7 @@ class PagoController extends Controller
             ->where('prestamo.usuario_id', $uid)
             ->where('prestamo.idp', $idp)
             ->whereNull('prestamo.delete_at')
+            ->where('detalle_prestamo.estado', '!=', 'T')
             ->select(
                 'detalle_prestamo.idd',
                 'detalle_prestamo.d_numero_cuota',
@@ -893,6 +916,7 @@ class PagoController extends Controller
             ->where('prestamo.usuario_id', $uid)
             ->whereNull('prestamo.delete_at')
             ->where('detalle_prestamo.fecha_cuota', $fecha)
+            ->where('detalle_prestamo.estado', '!=', 'T')
             ->select(
                 'detalle_prestamo.idd',
                 'detalle_prestamo.d_numero_cuota',
