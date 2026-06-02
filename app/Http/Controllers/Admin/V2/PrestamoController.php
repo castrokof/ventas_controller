@@ -78,7 +78,6 @@ class PrestamoController extends Controller
             $datas = DB::table('prestamo')
                 ->join('cliente', 'prestamo.cliente_id', '=', 'cliente.id')
                 ->where('prestamo.usuario_id', $usuario_id)
-                ->where('prestamo.monto_pendiente', '>', 0)
                 ->whereNull('prestamo.delete_at')
                 ->get();
 
@@ -183,8 +182,10 @@ class PrestamoController extends Controller
             abort(403);
         }
 
+        $uid = request()->session()->get('usuario_id');
         DB::table('prestamo')
             ->where('idp', $id)
+            ->where('usuario_id', $uid)
             ->update([
                 'estado'    => 'A',
                 'delete_at' => now(),
@@ -203,10 +204,12 @@ class PrestamoController extends Controller
             abort(403);
         }
 
+        $uid  = request()->session()->get('usuario_id');
         $data = DB::table('prestamo')
             ->join('cliente',          'prestamo.cliente_id', '=', 'cliente.id')
             ->join('detalle_prestamo', 'prestamo.idp',        '=', 'detalle_prestamo.prestamo_id')
             ->where('prestamo.idp', $id)
+            ->where('prestamo.usuario_id', $uid)
             ->select(
                 'cliente.nombres',
                 'cliente.apellidos',
@@ -313,9 +316,11 @@ class PrestamoController extends Controller
             abort(403);
         }
 
+        $uid  = request()->session()->get('usuario_id');
         $data = DB::table('prestamo')
             ->join('cliente', 'prestamo.cliente_id', '=', 'cliente.id')
             ->where('prestamo.idp', $id)
+            ->where('prestamo.usuario_id', $uid)
             ->get();
 
         return response()->json(['result' => $data]);
@@ -331,6 +336,7 @@ class PrestamoController extends Controller
             abort(403);
         }
 
+        $uid  = request()->session()->get('usuario_id');
         $data = DB::table('prestamo')
             ->join('cliente', 'prestamo.cliente_id', '=', 'cliente.id')
             ->select(
@@ -343,6 +349,7 @@ class PrestamoController extends Controller
                 'prestamo.fecha_inicial', 'prestamo.created_at'
             )
             ->where('prestamo.idp', $id)
+            ->where('prestamo.usuario_id', $uid)
             ->get();
 
         return response()->json(['result' => $data]);

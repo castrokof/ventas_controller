@@ -114,7 +114,9 @@ class ClienteController extends Controller
             ->toArray();
 
         if (request()->ajax()) {
-            $data = Cliente::findOrFail($id);
+            $data = Cliente::where('id', $id)
+                ->where('usuario_id', $id_usuario)
+                ->firstOrFail();
             return response()->json(['result' => $data]);
         }
 
@@ -132,7 +134,10 @@ class ClienteController extends Controller
             return response()->json(['errors' => $error->errors()->all()]);
         }
 
-        $cliente = Cliente::findOrFail($id);
+        $id_usuario = Session()->get('usuario_id');
+        $cliente    = Cliente::where('id', $id)
+            ->where('usuario_id', $id_usuario)
+            ->firstOrFail();
         $cliente->update($request->all());
 
         return response()->json(['success' => 'ok1']);
@@ -143,7 +148,10 @@ class ClienteController extends Controller
      */
     public function detalle(int $id): JsonResponse
     {
-        $result = Prestamo::where('cliente_id', '=', $id)->get();
+        $id_usuario = Session()->get('usuario_id');
+        $result = Prestamo::where('cliente_id', '=', $id)
+            ->where('usuario_id', $id_usuario)
+            ->get();
 
         return response()->json(['result' => $result]);
     }
