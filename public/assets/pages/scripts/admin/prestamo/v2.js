@@ -146,8 +146,17 @@ function iniciarTabla() {
 /* ── Document ready ─────────────────────────────────────────────────────── */
 $(function () {
 
-    // ── Select2 ─────────────────────────────────────────────────────────────
-    $('.select2bs4').select2({ theme: 'bootstrap4' });
+    // ── Select2 — inicializar dentro de cada modal con dropdownParent
+    //    (evita que el dropdown quede detrás del backdrop de Bootstrap)
+    function initSelect2EnModal(modalId) {
+        /* .not('.select2-hidden-accessible') evita doble-init */
+        $('#' + modalId + ' .select2bs4').not('.select2-hidden-accessible').select2({
+            theme:          'bootstrap4',
+            dropdownParent: $('#' + modalId),
+        });
+    }
+    $('#modal-crear-prestamo').on('shown.bs.modal', function () { initSelect2EnModal('modal-crear-prestamo'); });
+    $('#modal-refinanciar').on('shown.bs.modal',    function () { initSelect2EnModal('modal-refinanciar'); });
 
     // ── Iniciar DataTable ────────────────────────────────────────────────────
     iniciarTabla();
@@ -160,6 +169,7 @@ $(function () {
         $('#form-crear-prestamo')[0].reset();
         $('#form-result-crear').html('');
         $('#monto_total_p, #valor_cuota_p, #monto_pendiente_p').val('');
+        $('#modal-crear-prestamo .select2bs4').val(null).trigger('change');
         $('#modal-crear-prestamo').modal('show');
     });
 
