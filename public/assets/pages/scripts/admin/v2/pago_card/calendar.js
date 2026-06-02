@@ -1001,7 +1001,7 @@ function rellenarModalPago(d) {
     $('#valor_cuota').val(d.valor_cuota || '');
     $('#estado_cuota').val(d.estado || '');
     $('#vatraso').val(d.monto_atrasado || 0);
-    $('#valor_abono').val('');
+    $('#valor_abono').val(d.valor_cuota || '');
     $('#observacion').val('');
 }
 

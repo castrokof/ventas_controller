@@ -427,7 +427,10 @@ window.CAL_BASE = '{{ url("admin/v2/pago-card") }}';
       <div class="card mb-0">
         <div class="card-header d-flex align-items-center">
           <h6 class="modal-title-dp mb-0 flex-grow-1" id="modal-dp-titulo"></h6>
-          <div class="btn-group ml-auto" id="btnar" role="group"></div>
+          <div class="btn-group ml-2" id="btnar" role="group"></div>
+          <button type="button" class="btn btn-sm btn-secondary ml-2" data-dismiss="modal" aria-label="Cerrar">
+            <i class="fas fa-times"></i> Cerrar
+          </button>
         </div>
         <div class="card-body" id="detalles"></div>
       </div>
