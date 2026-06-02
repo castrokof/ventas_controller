@@ -282,11 +282,13 @@ Route::prefix('admin/v2')
     /* AJAX: restablecer contraseña del portal (→ últimos 6 dígitos del doc.) */
     Route::post('cliente/{id}/reset-password',  'ClienteController@resetPassword') ->name('cliente.reset_password');
 
-    /* ── Empleados V2 ────────────────────────────────────────────── */
-    Route::get( 'empleado',              'EmpleadoController@index')    ->name('empleado.index');
-    Route::post('empleado',              'EmpleadoController@guardar')  ->name('empleado.guardar');
-    Route::get( 'empleado/{id}/editar',  'EmpleadoController@editar')   ->name('empleado.editar');
-    Route::put( 'empleado/{id}',         'EmpleadoController@actualizar')->name('empleado.actualizar');
+    /* ── Empleados V2 — solo empresa y administrador ────────────── */
+    Route::middleware('soloEmpresaAdmin')->group(function () {
+        Route::get( 'empleado',              'EmpleadoController@index')    ->name('empleado.index');
+        Route::post('empleado',              'EmpleadoController@guardar')  ->name('empleado.guardar');
+        Route::get( 'empleado/{id}/editar',  'EmpleadoController@editar')   ->name('empleado.editar');
+        Route::put( 'empleado/{id}',         'EmpleadoController@actualizar')->name('empleado.actualizar');
+    });
 
     /* ── Gastos V2 ───────────────────────────────────────────────── */
     Route::get( 'gasto',              'GastoController@index')    ->name('gasto.index');
