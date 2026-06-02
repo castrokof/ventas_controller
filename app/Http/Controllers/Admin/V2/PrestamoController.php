@@ -57,6 +57,36 @@ class PrestamoController extends Controller
     ];
 
     // ────────────────────────────────────────────────────────────────────────
+    // SCOPE HELPER
+    // ────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Devuelve la lista de usuario_ids visibles para el usuario en sesión.
+     * - rol 2 (empresa): todos los usuarios de la empresa
+     * - resto: solo el propio usuario
+     */
+    private function scopeUsuarioIds(): array
+    {
+        $uid    = (int) session('usuario_id');
+        $rol_id = (int) session('rol_id');
+
+        if ($rol_id === 2) {
+            $emp_id     = session('empleado_id');
+            $empresa_id = DB::table('empleado')->where('ide', $emp_id)->value('empresa_id');
+            if ($empresa_id) {
+                $ids = DB::table('usuario')
+                    ->join('empleado', 'usuario.empleado_id', '=', 'empleado.ide')
+                    ->where('empleado.empresa_id', $empresa_id)
+                    ->pluck('usuario.id')
+                    ->toArray();
+                return $ids ?: [$uid];
+            }
+        }
+
+        return [$uid];
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
     // VISTAS
     // ────────────────────────────────────────────────────────────────────────
 
@@ -66,9 +96,10 @@ class PrestamoController extends Controller
      */
     public function index(Request $request)
     {
-        $usuario_id = $request->session()->get('usuario_id');
+        $uids       = $this->scopeUsuarioIds();
+        $usuario_id = (int) $request->session()->get('usuario_id');
 
-        $clientes = Cliente::where('usuario_id', $usuario_id)->get();
+        $clientes = Cliente::whereIn('usuario_id', $uids)->get();
         $usuarios = Usuario::orderBy('id')
             ->where('id', $usuario_id)
             ->pluck('usuario', 'id')
@@ -77,7 +108,7 @@ class PrestamoController extends Controller
         if ($request->ajax() || $request->has('draw')) {
             $datas = DB::table('prestamo')
                 ->join('cliente', 'prestamo.cliente_id', '=', 'cliente.id')
-                ->where('prestamo.usuario_id', $usuario_id)
+                ->whereIn('prestamo.usuario_id', $uids)
                 ->whereNull('prestamo.delete_at')
                 ->get();
 
@@ -182,10 +213,9 @@ class PrestamoController extends Controller
             abort(403);
         }
 
-        $uid = request()->session()->get('usuario_id');
         DB::table('prestamo')
             ->where('idp', $id)
-            ->where('usuario_id', $uid)
+            ->whereIn('usuario_id', $this->scopeUsuarioIds())
             ->update([
                 'estado'    => 'A',
                 'delete_at' => now(),
@@ -204,12 +234,11 @@ class PrestamoController extends Controller
             abort(403);
         }
 
-        $uid  = request()->session()->get('usuario_id');
         $data = DB::table('prestamo')
             ->join('cliente',          'prestamo.cliente_id', '=', 'cliente.id')
             ->join('detalle_prestamo', 'prestamo.idp',        '=', 'detalle_prestamo.prestamo_id')
             ->where('prestamo.idp', $id)
-            ->where('prestamo.usuario_id', $uid)
+            ->whereIn('prestamo.usuario_id', $this->scopeUsuarioIds())
             ->select(
                 'cliente.nombres',
                 'cliente.apellidos',
@@ -316,11 +345,10 @@ class PrestamoController extends Controller
             abort(403);
         }
 
-        $uid  = request()->session()->get('usuario_id');
         $data = DB::table('prestamo')
             ->join('cliente', 'prestamo.cliente_id', '=', 'cliente.id')
             ->where('prestamo.idp', $id)
-            ->where('prestamo.usuario_id', $uid)
+            ->whereIn('prestamo.usuario_id', $this->scopeUsuarioIds())
             ->get();
 
         return response()->json(['result' => $data]);
@@ -336,7 +364,6 @@ class PrestamoController extends Controller
             abort(403);
         }
 
-        $uid  = request()->session()->get('usuario_id');
         $data = DB::table('prestamo')
             ->join('cliente', 'prestamo.cliente_id', '=', 'cliente.id')
             ->select(
@@ -349,7 +376,7 @@ class PrestamoController extends Controller
                 'prestamo.fecha_inicial', 'prestamo.created_at'
             )
             ->where('prestamo.idp', $id)
-            ->where('prestamo.usuario_id', $uid)
+            ->whereIn('prestamo.usuario_id', $this->scopeUsuarioIds())
             ->get();
 
         return response()->json(['result' => $data]);

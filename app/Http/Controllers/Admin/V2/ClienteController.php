@@ -41,11 +41,38 @@ class ClienteController extends Controller
     }
 
     /**
+     * Devuelve la lista de usuario_ids visibles para el usuario en sesión.
+     * - rol 2 (empresa): todos los usuarios de la empresa
+     * - resto: solo el propio usuario
+     */
+    private function scopeUsuarioIds(): array
+    {
+        $uid    = (int) session('usuario_id');
+        $rol_id = (int) session('rol_id');
+
+        if ($rol_id === 2) {
+            $emp_id     = session('empleado_id');
+            $empresa_id = DB::table('empleado')->where('ide', $emp_id)->value('empresa_id');
+            if ($empresa_id) {
+                $ids = DB::table('usuario')
+                    ->join('empleado', 'usuario.empleado_id', '=', 'empleado.ide')
+                    ->where('empleado.empresa_id', $empresa_id)
+                    ->pluck('usuario.id')
+                    ->toArray();
+                return $ids ?: [$uid];
+            }
+        }
+
+        return [$uid];
+    }
+
+    /**
      * index — lista de clientes con DataTable AJAX.
      */
     public function index(Request $request)
     {
-        $id_usuario = Session()->get('usuario_id');
+        $id_usuario = (int) Session()->get('usuario_id');
+        $uids       = $this->scopeUsuarioIds();
 
         $usuarios = Usuario::orderBy('id')
             ->where('id', '=', $id_usuario)
@@ -55,7 +82,7 @@ class ClienteController extends Controller
         $datas = collect(); // evita variable indefinida en la vista
 
         if ($request->ajax() || $request->has('draw')) {
-            $datas = Cliente::where('usuario_id', '=', $id_usuario)
+            $datas = Cliente::whereIn('usuario_id', $uids)
                 ->orderBy('usuario_id')
                 ->orderBy('consecutivo')
                 ->get();
@@ -115,7 +142,7 @@ class ClienteController extends Controller
 
         if (request()->ajax()) {
             $data = Cliente::where('id', $id)
-                ->where('usuario_id', $id_usuario)
+                ->whereIn('usuario_id', $this->scopeUsuarioIds())
                 ->firstOrFail();
             return response()->json(['result' => $data]);
         }
@@ -134,9 +161,8 @@ class ClienteController extends Controller
             return response()->json(['errors' => $error->errors()->all()]);
         }
 
-        $id_usuario = Session()->get('usuario_id');
-        $cliente    = Cliente::where('id', $id)
-            ->where('usuario_id', $id_usuario)
+        $cliente = Cliente::where('id', $id)
+            ->whereIn('usuario_id', $this->scopeUsuarioIds())
             ->firstOrFail();
         $cliente->update($request->all());
 
@@ -148,9 +174,8 @@ class ClienteController extends Controller
      */
     public function detalle(int $id): JsonResponse
     {
-        $id_usuario = Session()->get('usuario_id');
         $result = Prestamo::where('cliente_id', '=', $id)
-            ->where('usuario_id', $id_usuario)
+            ->whereIn('usuario_id', $this->scopeUsuarioIds())
             ->get();
 
         return response()->json(['result' => $result]);
