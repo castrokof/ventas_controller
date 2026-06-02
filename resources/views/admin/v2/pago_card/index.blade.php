@@ -160,7 +160,85 @@ body.sel-masivo-on { padding-bottom:62px; }
 <script>
 window.CAL_BASE = '{{ url("admin/v2/pago-card") }}';
 </script>
-<script src="{{ asset('assets/pages/scripts/admin/v2/pago_card/calendar.js') }}" type="text/javascript"></script>
+<script src="{{ asset('assets/pages/scripts/admin/v2/pago_card/calendar.js') }}?v={{ filemtime(public_path('assets/pages/scripts/admin/v2/pago_card/calendar.js')) }}" type="text/javascript"></script>
+<script>
+/* Cálculo automático préstamo — inline para evitar caché */
+$(function () {
+    var BASE_PRESTAMO = (window.CAL_BASE || '/admin/v2/pago-card').replace(/\/pago-card$/, '/prestamo');
+
+    function recalcularPrestamo() {
+        var monto   = parseFloat($('#montop').val())   || 0;
+        var cuotas  = parseInt($('#cuotas').val(), 10) || 0;
+        var interes = parseFloat($('#interes').val())  || 0;
+        var tipo    = $('#tipo_pagop').val();
+        if (!monto || !cuotas) {
+            $('#monto_totalp, #valor_cuotap, #monto_pendientep').val('');
+            return;
+        }
+        var total = (tipo === 'Mensual')
+            ? monto + (monto * (interes / 100) * cuotas)
+            : monto + (monto * (interes / 100));
+        total = Math.round(total);
+        $('#monto_totalp').val(total);
+        $('#valor_cuotap').val(Math.round(total / cuotas));
+        $('#monto_pendientep').val(total);
+    }
+
+    /* Reemplazar handlers de calendar.js (si quedaron de caché vieja) con versión inline */
+    $(document).off('input change', '#montop, #cuotas, #interes, #tipo_pagop');
+    $(document).on('input change',  '#montop, #cuotas, #interes, #tipo_pagop', recalcularPrestamo);
+
+    $('#modal-pc').off('show.bs.modal').on('show.bs.modal', function () {
+        $('#form-prestamo')[0].reset();
+        $('#monto_totalp, #valor_cuotap, #monto_pendientep').val('');
+        $('#form-result-prestamo').html('');
+    });
+
+    $('#form-prestamo').off('submit').on('submit', function (e) {
+        e.preventDefault();
+        var monto  = parseFloat($('#montop').val())   || 0;
+        var cuotas = parseInt($('#cuotas').val(), 10) || 0;
+        var interes= parseFloat($('#interes').val());
+        var total  = parseFloat($('#monto_totalp').val()) || 0;
+        var cuota  = parseFloat($('#valor_cuotap').val()) || 0;
+        if (!monto || !cuotas || isNaN(interes) || !total || !cuota) {
+            $('#form-result-prestamo').html(
+                '<div class="alert alert-warning py-2"><i class="fas fa-exclamation-triangle mr-1"></i>'
+                + 'Completa monto, tipo de pago, cuotas e interés para calcular los totales.</div>'
+            );
+            return;
+        }
+        var $btn = $(this).find('[type=submit]').prop('disabled', true)
+                    .html('<i class="fas fa-spinner fa-spin mr-1"></i>Guardando...');
+        $('#form-result-prestamo').html('');
+        $.ajax({
+            url:      BASE_PRESTAMO,
+            method:   'POST',
+            dataType: 'json',
+            data:     $(this).serialize(),
+            success: function (data) {
+                $btn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i>Guardar préstamo');
+                if (data.errors) {
+                    var h = '<div class="alert alert-danger py-2"><ul class="mb-0">';
+                    $.each(data.errors, function (i, err) { h += '<li>' + err + '</li>'; });
+                    $('#form-result-prestamo').html(h + '</ul></div>');
+                    return;
+                }
+                $('#modal-pc').modal('hide');
+                if (typeof cargarCuotasDia === 'function') cargarCuotasDia(selDate);
+                if (typeof cargarListaPrestamos === 'function') cargarListaPrestamos();
+                Swal.fire({ icon: 'success', title: 'Préstamo creado', showConfirmButton: false, timer: 1800 });
+            },
+            error: function () {
+                $btn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i>Guardar préstamo');
+                $('#form-result-prestamo').html(
+                    '<div class="alert alert-danger py-2"><i class="fas fa-times-circle mr-1"></i>Error al guardar. Intenta de nuevo.</div>'
+                );
+            }
+        });
+    });
+});
+</script>
 @endsection
 
 @section('contenido')
