@@ -170,7 +170,7 @@
       <option value="">— Seleccione —</option>
       @foreach ($usuarios as $uid => $uname)
         <option value="{{ $uid }}"
-          {{ old('usuario_id', $datas->usuario_id ?? $uid) == $uid ? 'selected' : '' }}>
+          {{ old('usuario_id', isset($datas) && is_object($datas) && isset($datas->usuario_id) ? $datas->usuario_id : $uid) == $uid ? 'selected' : '' }}>
           {{ $uname }}
         </option>
       @endforeach
