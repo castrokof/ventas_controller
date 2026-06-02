@@ -2,29 +2,18 @@
     $url        = $item['url'] ?? '#';
     $hasSubmenu = !empty($item['submenu']);
 
-    // Extraer solo el path del URL almacenado (puede ser relativo o absoluto)
-    $itemPath = '';
-    if ($url !== '#' && $url !== '') {
-        $parsed   = parse_url(url($url));
-        $itemPath = ltrim($parsed['path'] ?? '', '/');
-    }
+    // request()->is() compara contra el path relativo al root de la app,
+    // sin importar si está instalada en un subdirectorio.
+    $isActive = $url !== '#' && $url !== ''
+        && request()->is(ltrim($url, '/'));
 
-    $currPath = request()->path(); // ej. "pagoc" o "admin/v2/cliente"
-
-    // ¿Es este ítem el activo?
-    $isActive = $itemPath !== '' && $currPath === $itemPath;
-
-    // ¿Algún hijo directo está activo? (para abrir el treeview padre)
+    // ¿Algún hijo directo está activo? → abrir el treeview padre
     $isOpen = false;
     if ($hasSubmenu && !$isActive) {
         foreach ($item['submenu'] as $sub) {
-            $subUrl  = $sub['url'] ?? '';
-            $subPath = '';
-            if ($subUrl !== '#' && $subUrl !== '') {
-                $p       = parse_url(url($subUrl));
-                $subPath = ltrim($p['path'] ?? '', '/');
-            }
-            if ($subPath !== '' && $currPath === $subPath) {
+            $subUrl = $sub['url'] ?? '';
+            if ($subUrl !== '#' && $subUrl !== ''
+                && request()->is(ltrim($subUrl, '/'))) {
                 $isOpen = true;
                 break;
             }
@@ -48,7 +37,7 @@
             <i class="right fas fa-angle-left"></i>
         </p>
     </a>
-    <ul class="nav nav-treeview">
+    <ul class="nav nav-treeview" @if($isOpen) style="display:block" @endif>
         @foreach ($item['submenu'] as $submenu)
             @include("theme.$theme.menu-item", ['item' => $submenu])
         @endforeach
