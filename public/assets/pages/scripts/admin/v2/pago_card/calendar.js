@@ -52,6 +52,10 @@ const todayStr = new Date().toISOString().slice(0, 10);
 var selMasivo    = false;
 var seleccionIds = {};
 
+/* ── Panel préstamos ────────────────────────────────────────────────────────── */
+var prstData    = [];
+var prstFiltro  = 'all';
+
 /* ── Estado modal cuotas préstamo ───────────────────────────────────────────── */
 var mcpIdp      = null;
 var mcpNombre   = '';
@@ -507,6 +511,9 @@ $(function () {
                         if ($('#cal-container').is(':visible')) {
                             cargarCalendario(calYear, calMonth, selDate);
                         }
+                        if ($('#prestamos-container').is(':visible')) {
+                            cargarListaPrestamos();
+                        }
                     }
                 },
                 error: function () {
@@ -641,6 +648,41 @@ $(function () {
     });
 
     /* ════════════════════════════════════════════════════════════════════════
+     * PANEL PRÉSTAMOS
+     * ════════════════════════════════════════════════════════════════════════ */
+
+    $('#btn-toggle-prestamos').on('click', function () {
+        var visible = $('#prestamos-container').is(':visible');
+        if (visible) {
+            $('#prestamos-container').slideUp(200);
+            $(this).removeClass('activo');
+        } else {
+            $('#prestamos-container').slideDown(200);
+            $(this).addClass('activo');
+            if (!prstData.length) cargarListaPrestamos();
+        }
+    });
+
+    $('#btn-prst-refresh').on('click', function (e) {
+        e.stopPropagation();
+        cargarListaPrestamos();
+    });
+
+    $(document).on('click', '[data-prst-filter]', function () {
+        $('[data-prst-filter]').removeClass('active');
+        $(this).addClass('active');
+        prstFiltro = $(this).data('prst-filter');
+        renderListaPrestamos();
+    });
+
+    $(document).on('click', '.prst-card', function () {
+        var idp    = $(this).data('idp');
+        var nombre = $(this).data('nombre');
+        var filtro = $(this).data('filtro');
+        abrirCuotasPrestamo(idp, nombre, false, filtro);
+    });
+
+    /* ════════════════════════════════════════════════════════════════════════
      * MODAL CUOTAS DEL PRÉSTAMO (calendario + adelantos)
      * ════════════════════════════════════════════════════════════════════════ */
 
@@ -731,6 +773,7 @@ $(function () {
         mcpFiltro = 'all';
         $('#mcp-progreso').hide().html('');
         $('#mcp-dia-lbl').hide();
+        if ($('#prestamos-container').is(':visible')) cargarListaPrestamos();
     });
 
 });
@@ -973,18 +1016,19 @@ function escHtml(str) {
  * MODAL CUOTAS DEL PRÉSTAMO
  * ═══════════════════════════════════════════════════════════════════════════════ */
 
-function abrirCuotasPrestamo(idp, nombre, reload) {
+function abrirCuotasPrestamo(idp, nombre, reload, filtroInicial) {
     mcpIdp    = idp;
     mcpNombre = nombre || ('Crédito #' + idp);
     if (!reload) {
+        var fi      = filtroInicial || 'all';
         mcpCuotas   = [];
         mcpSel      = {};
         mcpDia      = null;
-        mcpFiltro   = 'all';
+        mcpFiltro   = fi;
         mcpCalYear  = new Date().getFullYear();
         mcpCalMonth = new Date().getMonth() + 1;
         $('[data-mcp-filter]').removeClass('active');
-        $('[data-mcp-filter="all"]').addClass('active');
+        $('[data-mcp-filter="' + fi + '"]').addClass('active');
     }
 
     $('#mcp-titulo').text('Crédito #' + idp + ' — ' + nombre);
@@ -1195,6 +1239,9 @@ function mcpPagarSeleccionadas() {
             if ($('#cal-container').is(':visible')) {
                 cargarCalendario(calYear, calMonth, selDate);
             }
+            if ($('#prestamos-container').is(':visible')) {
+                cargarListaPrestamos();
+            }
             return;
         }
 
@@ -1233,4 +1280,90 @@ function mcpPagarSeleccionadas() {
     }
 
     siguiente();
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * PANEL DE PRÉSTAMOS
+ * ═══════════════════════════════════════════════════════════════════════════════ */
+
+function cargarListaPrestamos() {
+    $('#prst-loading').show();
+    $('#prst-list').empty();
+    $('#prst-empty').hide();
+    prstData = [];
+
+    $.ajax({
+        url:      BASE_PC + '/prestamos',
+        method:   'GET',
+        dataType: 'json',
+        success: function (data) {
+            prstData = ((data || {}).result) || [];
+            renderListaPrestamos();
+        },
+        error: function () {
+            $('#prst-list').html(
+                '<p class="text-danger text-center py-2" style="font-size:12px">'
+              + '<i class="fas fa-exclamation-circle mr-1"></i>Error al cargar préstamos.</p>'
+            );
+        },
+        complete: function () {
+            $('#prst-loading').hide();
+        }
+    });
+}
+
+function renderListaPrestamos() {
+    var lista = (prstFiltro === 'atraso')
+        ? prstData.filter(function (p) { return p.cuotas_atrasadas > 0; })
+        : prstData;
+
+    if (!lista.length) {
+        $('#prst-empty')
+            .text(prstFiltro === 'atraso' ? 'Sin préstamos con atrasos.' : 'No hay préstamos activos.')
+            .show();
+        $('#prst-list').empty();
+        return;
+    }
+
+    var html = '';
+    lista.forEach(function (p) {
+        var tieneAtraso = p.cuotas_atrasadas > 0;
+        var nombre      = escHtml(p.nombres + ' ' + p.apellidos);
+        var pendiente   = parseFloat(p.monto_pendiente || 0).toLocaleString('es-CO');
+        var atrasado    = parseFloat(p.monto_atrasado  || 0).toLocaleString('es-CO');
+
+        html += '<div class="prst-card ' + (tieneAtraso ? 'has-atraso' : 'no-atraso') + '"'
+              + ' data-idp="' + p.idp + '" data-nombre="' + nombre + '"'
+              + ' data-filtro="' + (tieneAtraso ? 'A' : 'all') + '">'
+              + '  <div class="d-flex align-items-start justify-content-between">'
+              + '    <div style="flex:1;min-width:0">'
+              + '      <div class="prst-name text-truncate">' + nombre + '</div>'
+              + '      <div class="prst-meta">'
+              +          escHtml(p.tipo_pago || '') + ' · Crédito #' + p.idp
+              + '      </div>'
+              + '    </div>'
+              + '    <div class="text-right ml-2" style="flex-shrink:0">'
+              + '      <div class="prst-val">$' + pendiente + '</div>'
+              + '      <div class="prst-meta">pendiente</div>'
+              + '    </div>'
+              + '  </div>';
+
+        if (tieneAtraso) {
+            html += '  <div class="d-flex align-items-center justify-content-between mt-1">'
+                  + '    <small class="text-danger font-weight-bold" style="font-size:11px">'
+                  + '      <i class="fas fa-exclamation-triangle mr-1"></i>'
+                  +        p.cuotas_atrasadas + ' atraso(s) · $' + atrasado
+                  + '    </small>'
+                  + '    <small class="text-muted" style="font-size:11px">Ver cuotas <i class="fas fa-chevron-right"></i></small>'
+                  + '  </div>';
+        } else {
+            html += '  <div class="mt-1">'
+                  + '    <small class="text-muted" style="font-size:11px">Ver cuotas <i class="fas fa-chevron-right"></i></small>'
+                  + '  </div>';
+        }
+
+        html += '</div>';
+    });
+
+    $('#prst-list').html(html);
 }

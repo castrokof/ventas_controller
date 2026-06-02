@@ -130,6 +130,26 @@ body.sel-masivo-on { padding-bottom:62px; }
     background:#f8f9fa; border-radius:8px; padding:10px;
     text-align:center; font-size:13px; margin-bottom:6px; display:none;
 }
+
+/* ── Panel préstamos ──────────────────────────────── */
+.prst-card {
+    border-radius:8px; border-left:4px solid #dee2e6;
+    background:#fff; box-shadow:0 1px 4px rgba(0,0,0,.08);
+    padding:10px 12px; margin-bottom:8px; cursor:pointer;
+    transition:box-shadow .12s, background .1s;
+}
+.prst-card:hover       { box-shadow:0 3px 8px rgba(0,0,0,.15); background:#fafafa; }
+.prst-card:active      { background:#f1f3f5; }
+.prst-card.has-atraso  { border-left-color:#dc3545; }
+.prst-card.no-atraso   { border-left-color:#fd7e14; }
+.prst-name { font-weight:700; font-size:13px; color:#212529; }
+.prst-meta { font-size:11px; color:#6c757d; line-height:1.5; }
+.prst-val  { font-size:14px; font-weight:700; color:#212529; }
+#btn-toggle-prestamos.activo {
+    background:#6366f1!important; color:#fff!important;
+    border-color:#6366f1!important;
+}
+.cal-cell-dim { opacity:.35; }
 </style>
 @endsection
 
@@ -175,6 +195,9 @@ window.CAL_BASE = '{{ url("admin/v2/pago-card") }}';
     <button id="btn-toggle-cal" class="btn btn-sm btn-outline-secondary">
       <i class="fas fa-calendar-alt mr-1"></i><span id="lbl-toggle-cal">Ver calendario</span>
     </button>
+    <button id="btn-toggle-prestamos" class="btn btn-sm btn-outline-secondary">
+      <i class="fas fa-list-ul mr-1"></i>Préstamos
+    </button>
   </div>
   <div class="d-flex" style="gap:5px">
     <button class="btn btn-sm btn-info" data-toggle="modal" data-target="#modal-u-cli"
@@ -189,6 +212,48 @@ window.CAL_BASE = '{{ url("admin/v2/pago-card") }}';
             title="Cambio masivo de fecha">
       <i class="fas fa-calendar-check"></i>
     </button>
+  </div>
+</div>
+
+{{-- ════════════════════════════════════════════════════════ --}}
+{{-- PANEL PRÉSTAMOS (colapsable)                            --}}
+{{-- ════════════════════════════════════════════════════════ --}}
+<div id="prestamos-container" style="display:none" class="mb-2">
+  <div class="card shadow-sm mb-0">
+    <div class="card-body p-2">
+
+      {{-- Cabecera del panel --}}
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <span class="font-weight-bold" style="font-size:.85rem">
+          <i class="fas fa-list-ul mr-1 text-muted"></i>Préstamos activos
+        </span>
+        <div class="d-flex align-items-center" style="gap:4px">
+          <button class="filter-btn fb-all active" data-prst-filter="all">Todos</button>
+          <button class="filter-btn fb-atra"       data-prst-filter="atraso">
+            <i class="fas fa-exclamation-triangle mr-1"></i>Con atrasos
+          </button>
+          <button id="btn-prst-refresh" class="btn btn-xs btn-outline-secondary ml-1"
+                  title="Recargar" style="padding:2px 7px;font-size:11px">
+            <i class="fas fa-sync-alt"></i>
+          </button>
+        </div>
+      </div>
+
+      {{-- Spinner --}}
+      <div id="prst-loading" class="text-center py-3" style="display:none">
+        <i class="fas fa-spinner fa-spin text-primary"></i>
+      </div>
+
+      {{-- Vacío --}}
+      <p id="prst-empty" class="text-center text-muted py-2 mb-0"
+         style="font-size:12px;display:none">
+        <i class="fas fa-check-circle text-success mr-1"></i>Sin préstamos en esta categoría.
+      </p>
+
+      {{-- Lista de préstamos --}}
+      <div id="prst-list"></div>
+
+    </div>
   </div>
 </div>
 

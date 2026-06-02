@@ -278,6 +278,38 @@ class PagoController extends Controller
     }
 
     /**
+     * Lista de préstamos activos para el panel del cobrador.
+     * GET /admin/v2/pago-card/prestamos
+     */
+    public function listaPrestamos(Request $request): JsonResponse
+    {
+        $uid = $request->session()->get('usuario_id');
+
+        $rows = DB::table('prestamo')
+            ->join('cliente', 'prestamo.cliente_id', '=', 'cliente.id')
+            ->where('prestamo.usuario_id', $uid)
+            ->where('prestamo.monto_pendiente', '>', 0)
+            ->whereNull('prestamo.delete_at')
+            ->select(
+                'prestamo.idp',
+                'prestamo.monto_pendiente',
+                'prestamo.monto_atrasado',
+                'prestamo.cuotas_atrasadas',
+                'prestamo.valor_cuota',
+                'prestamo.cuotas',
+                'prestamo.tipo_pago',
+                'cliente.nombres',
+                'cliente.apellidos',
+                'cliente.celular'
+            )
+            ->orderByDesc('prestamo.cuotas_atrasadas')
+            ->orderByDesc('prestamo.monto_atrasado')
+            ->get();
+
+        return response()->json(['result' => $rows]);
+    }
+
+    /**
      * Cuotas de adelanto de un préstamo.
      * GET /admin/v2/pago-card/adelanto
      * (equivale a indexAdelanto → ruta pagoa)
