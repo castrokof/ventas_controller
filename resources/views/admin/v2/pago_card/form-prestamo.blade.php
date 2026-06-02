@@ -191,6 +191,10 @@
   </div>
 </div>
 
+{{-- Campos ocultos requeridos por el backend --}}
+<input type="hidden" name="activo"          value="1">
+<input type="hidden" name="monto_pendiente" id="monto_pendientep" value="">
+
 {{-- ── Nota informativa ─────────────────────────────────────── --}}
 <div class="alert alert-light border-left border-info pl-3 py-2 mb-0" role="note">
   <small class="text-muted">

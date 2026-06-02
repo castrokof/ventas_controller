@@ -782,6 +782,100 @@ $(function () {
         if ($('#prestamos-container').is(':visible')) cargarListaPrestamos();
     });
 
+    /* ════════════════════════════════════════════════════════════════════════
+     * CREAR PRÉSTAMO — cálculo automático + submit
+     * ════════════════════════════════════════════════════════════════════════ */
+
+    function recalcularPrestamo() {
+        var monto  = parseFloat($('#montop').val())       || 0;
+        var cuotas = parseInt($('#cuotas').val(), 10)     || 0;
+        var interes= parseFloat($('#interes').val())      || 0;
+        var tipo   = $('#tipo_pagop').val();
+
+        if (!monto || !cuotas) {
+            $('#monto_totalp').val('');
+            $('#valor_cuotap').val('');
+            $('#monto_pendientep').val('');
+            return;
+        }
+
+        var total;
+        // Mensual: el interés se aplica por cada cuota (monto × interes% × nCuotas)
+        // Diario / Semanal / Quincenal: el interés se aplica una sola vez sobre el monto
+        if (tipo === 'Mensual') {
+            total = monto + (monto * (interes / 100) * cuotas);
+        } else {
+            total = monto + (monto * (interes / 100));
+        }
+
+        total = Math.round(total);
+        var valorCuota = Math.round(total / cuotas);
+
+        $('#monto_totalp').val(total);
+        $('#valor_cuotap').val(valorCuota);
+        $('#monto_pendientep').val(total);
+    }
+
+    $(document).on('input change', '#montop, #cuotas, #interes, #tipo_pagop', recalcularPrestamo);
+
+    /* Limpiar cálculo al abrir el modal de nuevo préstamo */
+    $('#modal-pc').on('show.bs.modal', function () {
+        $('#form-prestamo')[0].reset();
+        $('#monto_totalp').val('');
+        $('#valor_cuotap').val('');
+        $('#monto_pendientep').val('');
+        $('#form-result-prestamo').html('');
+    });
+
+    /* Submit del formulario de crear préstamo */
+    $('#form-prestamo').on('submit', function (e) {
+        e.preventDefault();
+
+        var monto  = parseFloat($('#montop').val()) || 0;
+        var cuotas = parseInt($('#cuotas').val(), 10) || 0;
+        var interes= parseFloat($('#interes').val());
+        var total  = parseFloat($('#monto_totalp').val()) || 0;
+        var cuota  = parseFloat($('#valor_cuotap').val()) || 0;
+
+        if (!monto || !cuotas || isNaN(interes) || !total || !cuota) {
+            $('#form-result-prestamo').html(
+                '<div class="alert alert-warning py-2"><i class="fas fa-exclamation-triangle mr-1"></i>'
+                + 'Completa monto, tipo de pago, cuotas e interés para calcular los totales.</div>'
+            );
+            return;
+        }
+
+        var $btn = $(this).find('[type=submit]').prop('disabled', true)
+                    .html('<i class="fas fa-spinner fa-spin mr-1"></i>Guardando...');
+        $('#form-result-prestamo').html('');
+
+        $.ajax({
+            url:      BASE_P,
+            method:   'POST',
+            dataType: 'json',
+            data:     $(this).serialize(),
+            success: function (data) {
+                $btn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i>Guardar préstamo');
+                if (data.errors) {
+                    var h = '<div class="alert alert-danger py-2"><ul class="mb-0">';
+                    data.errors.forEach(function (err) { h += '<li>' + err + '</li>'; });
+                    $('#form-result-prestamo').html(h + '</ul></div>');
+                    return;
+                }
+                $('#modal-pc').modal('hide');
+                cargarCuotasDia(selDate);
+                cargarListaPrestamos();
+                Swal.fire({ icon: 'success', title: 'Préstamo creado', showConfirmButton: false, timer: 1800 });
+            },
+            error: function () {
+                $btn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i>Guardar préstamo');
+                $('#form-result-prestamo').html(
+                    '<div class="alert alert-danger py-2"><i class="fas fa-times-circle mr-1"></i>Error al guardar. Intenta de nuevo.</div>'
+                );
+            }
+        });
+    });
+
 });
 
 /* ═══════════════════════════════════════════════════════════════════════════════
