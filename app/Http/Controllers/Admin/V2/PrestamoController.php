@@ -498,7 +498,7 @@ class PrestamoController extends Controller
 
     /**
      * Avanza la fecha hasta que no caiga en domingo (si excluido) ni en
-     * festivo colombiano (si excluido). Si ambos están permitidos, no hace nada.
+     * feriado argentino (si excluido). Si ambos están permitidos, no hace nada.
      */
     private function skipToValidDate(string $date, bool $incluirDomingo, bool $incluirFestivo): string
     {
@@ -518,7 +518,7 @@ class PrestamoController extends Controller
                 continue;
             }
 
-            if (! $incluirFestivo && $this->isFestivoColombia($d)) {
+            if (! $incluirFestivo && $this->isFestivoArgentina($d)) {
                 $d->addDay();
                 $changed = true;
             }
@@ -528,29 +528,29 @@ class PrestamoController extends Controller
     }
 
     /**
-     * Indica si una fecha es festivo en Colombia.
+     * Indica si una fecha es feriado nacional en Argentina.
      *
-     * Categorías:
-     *  1. Festivos fijos (no se mueven).
-     *  2. Festivos Ley Emiliani: si no caen en lunes, se trasladan al
-     *     siguiente lunes.
-     *  3. Jueves y Viernes Santo (basados en Pascua).
-     *  4. Móviles Ley Emiliani basados en Pascua (Ascensión, Corpus Christi,
-     *     Sagrado Corazón).
+     * Fuente: Ley 27.399 y Decreto 1584/2010.
+     *  1. Feriados fijos (no se trasladan).
+     *  2. Feriados trasladables: Mar/Mié → lunes anterior; Jue/Vie/Sáb → lunes siguiente.
+     *  3. Carnaval (Lunes y Martes, 48 y 47 días antes de Pascua).
+     *  4. Viernes Santo (2 días antes de Pascua).
      */
-    private function isFestivoColombia(Carbon $date): bool
+    private function isFestivoArgentina(Carbon $date): bool
     {
         $year  = $date->year;
         $month = $date->month;
         $day   = $date->day;
 
-        // ── 1. Festivos fijos ────────────────────────────────────────────────
+        // ── 1. Feriados fijos ────────────────────────────────────────────────
         $fijos = [
             [1,  1],   // Año Nuevo
-            [5,  1],   // Día del Trabajo
-            [7,  20],  // Independencia de Colombia
-            [8,  7],   // Batalla de Boyacá
-            [12, 8],   // Inmaculada Concepción
+            [3,  24],  // Día de la Memoria por la Verdad y la Justicia
+            [4,  2],   // Día del Veterano y los Caídos en Malvinas
+            [5,  1],   // Día del Trabajador
+            [5,  25],  // Revolución de Mayo
+            [7,  9],   // Día de la Independencia
+            [12, 8],   // Inmaculada Concepción de María
             [12, 25],  // Navidad
         ];
 
@@ -560,55 +560,39 @@ class PrestamoController extends Controller
             }
         }
 
-        // ── 2. Festivos Ley Emiliani ─────────────────────────────────────────
-        //    Si la fecha base no es lunes, el festivo se corre al siguiente lunes.
-        $emiliani = [
-            [1,  6],   // Reyes Magos
-            [3,  19],  // San José
-            [6,  29],  // San Pedro y San Pablo
-            [8,  15],  // Asunción de la Virgen
-            [10, 12],  // Día de la Raza
-            [11, 1],   // Todos los Santos
-            [11, 11],  // Independencia de Cartagena
+        // ── 2. Feriados trasladables (Decreto 1584/2010) ─────────────────────
+        //    Mar/Mié → lunes anterior | Jue/Vie/Sáb → lunes siguiente
+        $trasladables = [
+            [6,  20],  // Paso a la Inmortalidad del Gral. Manuel Belgrano
+            [8,  17],  // Paso a la Inmortalidad del Gral. José de San Martín
+            [10, 12],  // Día del Respeto a la Diversidad Cultural
+            [11, 20],  // Día de la Soberanía Nacional
         ];
 
-        foreach ($emiliani as [$m, $d]) {
+        foreach ($trasladables as [$m, $d]) {
             $base = Carbon::create($year, $m, $d);
-            if ($base->dayOfWeek !== Carbon::MONDAY) {
-                $base->next(Carbon::MONDAY);
+            $dow  = $base->dayOfWeek;
+            if ($dow === Carbon::TUESDAY || $dow === Carbon::WEDNESDAY) {
+                $festivo = $base->copy()->previous(Carbon::MONDAY);
+            } elseif ($dow === Carbon::THURSDAY || $dow === Carbon::FRIDAY || $dow === Carbon::SATURDAY) {
+                $festivo = $base->copy()->next(Carbon::MONDAY);
+            } else {
+                $festivo = $base->copy();
             }
-            if ($date->isSameDay($base)) {
+            if ($date->isSameDay($festivo)) {
                 return true;
             }
         }
 
-        // ── 3 & 4. Festivos basados en Pascua ───────────────────────────────
-        //    easter_days() devuelve días después del 21 de marzo → sin TZ.
+        // ── 3 & 4. Carnaval y Semana Santa (basados en Pascua) ──────────────
         $easter = Carbon::create($year, 3, 21)->addDays(easter_days($year));
 
-        // Jueves y Viernes Santo (fijos respecto a Pascua)
-        if ($date->isSameDay($easter->copy()->subDays(3))) {
-            return true;
-        }
-        if ($date->isSameDay($easter->copy()->subDays(2))) {
-            return true;
-        }
+        // Carnaval: Lunes y Martes previos (48 y 47 días antes de Pascua)
+        if ($date->isSameDay($easter->copy()->subDays(48))) return true;
+        if ($date->isSameDay($easter->copy()->subDays(47))) return true;
 
-        // Móviles Ley Emiliani basados en Pascua
-        $movilesPascua = [
-            $easter->copy()->addDays(39),  // Ascensión del Señor
-            $easter->copy()->addDays(60),  // Corpus Christi
-            $easter->copy()->addDays(68),  // Sagrado Corazón de Jesús
-        ];
-
-        foreach ($movilesPascua as $base) {
-            if ($base->dayOfWeek !== Carbon::MONDAY) {
-                $base->next(Carbon::MONDAY);
-            }
-            if ($date->isSameDay($base)) {
-                return true;
-            }
-        }
+        // Viernes Santo
+        if ($date->isSameDay($easter->copy()->subDays(2))) return true;
 
         return false;
     }
