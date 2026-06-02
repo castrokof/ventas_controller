@@ -157,6 +157,7 @@ body.sel-masivo-on { padding-bottom:62px; }
 <script src="{{asset("assets/$theme/plugins/datatables/jquery.dataTables.js")}}"></script>
 <script src="{{asset("assets/$theme/plugins/datatables-bs4/js/dataTables.bootstrap4.js")}}"></script>
 <script src="{{asset("assets/$theme/plugins/datatables-responsive/js/dataTables.responsive.min.js")}}"></script>
+<script src="{{ asset('assets/js/jquery-select2/select2.min.js') }}"></script>
 <script>
 window.CAL_BASE = '{{ url("admin/v2/pago-card") }}';
 </script>
@@ -192,6 +193,17 @@ $(function () {
         $('#form-prestamo')[0].reset();
         $('#monto_totalp, #valor_cuotap, #monto_pendientep').val('');
         $('#form-result-prestamo').html('');
+        /* Resetear valores de select2 al abrir */
+        $('#modal-pc .select2bs4').val(null).trigger('change');
+    });
+
+    /* Inicializar select2 cuando el modal ya es visible (necesario para dropdownParent) */
+    $('#modal-pc').off('shown.bs.modal').on('shown.bs.modal', function () {
+        /* .not('.select2-hidden-accessible') evita doble-init en aperturas sucesivas */
+        $('#modal-pc .select2bs4').not('.select2-hidden-accessible').select2({
+            theme:          'bootstrap4',
+            dropdownParent: $('#modal-pc'),
+        });
     });
 
     $('#form-prestamo').off('submit').on('submit', function (e) {
