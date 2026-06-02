@@ -591,11 +591,12 @@ window.CAL_BASE = '{{ url("admin/v2/pago-card") }}';
         <input type="date" id="cf-nueva-fecha" class="form-control form-control-sm">
         <div id="cf-feedback" class="text-danger mt-1" style="font-size:12px;display:none"></div>
       </div>
-      <div class="modal-footer py-2">
-        <button type="button" class="btn btn-sm btn-secondary" data-dismiss="modal">Cancelar</button>
+      <button type="button" class="btn btn-sm btn-secondary" data-dismiss="modal">Cancelar</button>
         <button type="button" id="btn-cf-confirmar" class="btn btn-sm btn-warning font-weight-bold">
           <i class="fas fa-check mr-1"></i>Aplicar
         </button>
+      <div class="modal-footer py-2">
+        
       </div>
     </div>
   </div>
