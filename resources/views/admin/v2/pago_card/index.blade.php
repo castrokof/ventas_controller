@@ -559,10 +559,13 @@ window.CAL_BASE = '{{ url("admin/v2/pago-card") }}';
           <div class="card-body">
             @include('admin.v2.pago_card.form-prestamo')
           </div>
-          <div class="card-footer text-right">
-            <button type="submit" class="btn btn-success">
-              <i class="fas fa-save"></i> Guardar préstamo
-            </button>
+          <div class="card-footer">
+            <div id="form-result-prestamo" class="mb-2"></div>
+            <div class="text-right">
+              <button type="submit" class="btn btn-success">
+                <i class="fas fa-save mr-1"></i>Guardar préstamo
+              </button>
+            </div>
           </div>
         </form>
       </div>

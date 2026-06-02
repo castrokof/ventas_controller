@@ -80,6 +80,38 @@
     </h6>
     <span class="badge badge-primary ml-2" id="badge-total-cli">—</span>
   </div>
+
+  {{-- Búsqueda + ordenamiento móvil --}}
+  <div class="mb-2 px-1">
+    <div class="input-group input-group-sm mb-1">
+      <div class="input-group-prepend">
+        <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
+      </div>
+      <input type="text" id="cli-search-mobile" class="form-control"
+             placeholder="Buscar por nombre, documento, ciudad…"
+             autocomplete="off">
+      <div class="input-group-append">
+        <button class="btn btn-outline-secondary" id="cli-search-clear" style="display:none">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+    </div>
+    <div class="d-flex gap-1" style="gap:.35rem">
+      <select id="cli-sort-mobile" class="form-control form-control-sm" style="max-width:160px">
+        <option value="consecutivo">Consecutivo ↑</option>
+        <option value="nombres">Nombre A-Z</option>
+        <option value="apellidos">Apellido A-Z</option>
+        <option value="documento">Documento</option>
+      </select>
+      <select id="cli-filter-activo" class="form-control form-control-sm" style="max-width:110px">
+        <option value="">Todos</option>
+        <option value="1">Activos</option>
+        <option value="0">Inactivos</option>
+      </select>
+      <span class="badge badge-light align-self-center ml-auto" id="badge-filtrados-cli" style="display:none"></span>
+    </div>
+  </div>
+
   <div id="mobile-cards-cli"></div>
   <p id="mobile-cli-empty" class="text-muted text-center mt-3" style="display:none">
     Sin clientes registrados.
@@ -227,42 +259,101 @@ $(function () {
     });
 
     /* ── Cards móvil ─────────────────────────────── */
+    var allClientItems = [];
+
+    function renderCards(items) {
+        if (!items.length) {
+            $('#mobile-cards-cli').html('');
+            $('#mobile-cli-empty').show();
+            $('#badge-filtrados-cli').hide();
+            return;
+        }
+        $('#mobile-cli-empty').hide();
+        var total = allClientItems.length;
+        if (items.length < total) {
+            $('#badge-filtrados-cli').text(items.length + ' de ' + total).show();
+        } else {
+            $('#badge-filtrados-cli').hide();
+        }
+        var html = '';
+        items.forEach(function(d) {
+            html += '<div class="v2-mcard">'
+                + '<div class="v2-mcard-header bg-primary text-white">'
+                + '<span><i class="fas fa-hashtag mr-1"></i>' + (d.consecutivo||'') + ' — ' + (d.nombres||'') + ' ' + (d.apellidos||'') + '</span>'
+                + '<span class="badge ' + (d.activo==1 ? 'badge-success' : 'badge-danger') + '">' + (d.activo==1?'Activo':'Inactivo') + '</span>'
+                + '</div>'
+                + '<div class="v2-mcard-body">'
+                + '<div><div class="v2-lbl">Documento</div><div class="v2-val">' + (d.tipo_documento||'') + ' ' + (d.documento||'') + '</div></div>'
+                + '<div><div class="v2-lbl">Celular</div><div class="v2-val"><a href="tel:' + (d.celular||'') + '">' + (d.celular||'—') + '</a></div></div>'
+                + '<div><div class="v2-lbl">Ciudad</div><div class="v2-val">' + (d.ciudad||'—') + '</div></div>'
+                + '<div><div class="v2-lbl">Dirección</div><div class="v2-val">' + (d.direccion||'—') + '</div></div>'
+                + '</div>'
+                + '<div class="v2-mcard-footer">'
+                + '<button class="btn btn-primary edit" id="' + d.id + '"><i class="far fa-edit mr-1"></i>Editar</button>'
+                + '<button class="btn btn-warning prestamo" id="' + d.id + '"><i class="fas fa-plus-circle mr-1"></i>Préstamo</button>'
+                + '<button class="btn btn-success detalle" id="' + d.id + '"><i class="fas fa-atlas"></i></button>'
+                + '<button class="btn btn-dark calificacion" id="' + d.id + '"><i class="fas fa-star"></i></button>'
+                + '</div></div>';
+        });
+        $('#mobile-cards-cli').html(html);
+    }
+
+    function filtrarYOrdenarCards() {
+        var q      = ($('#cli-search-mobile').val() || '').toLowerCase().trim();
+        var orden  = $('#cli-sort-mobile').val() || 'consecutivo';
+        var activo = $('#cli-filter-activo').val();
+
+        var items = allClientItems.slice();
+
+        if (activo !== '') {
+            items = items.filter(function(d) { return String(d.activo) === activo; });
+        }
+        if (q) {
+            items = items.filter(function(d) {
+                return ((d.nombres||'') + ' ' + (d.apellidos||'') + ' ' +
+                        (d.documento||'') + ' ' + (d.ciudad||'') + ' ' +
+                        (d.celular||'')).toLowerCase().indexOf(q) !== -1;
+            });
+        }
+        items.sort(function(a, b) {
+            var va = String(a[orden] || '').toLowerCase();
+            var vb = String(b[orden] || '').toLowerCase();
+            if (orden === 'consecutivo' || orden === 'documento') {
+                return (parseFloat(va)||0) - (parseFloat(vb)||0);
+            }
+            return va < vb ? -1 : va > vb ? 1 : 0;
+        });
+        renderCards(items);
+    }
+
     function loadCards() {
         $.ajax({
             url: AJAX_URL,
-            data: { draw:1, start:0, length:500,
+            data: { draw:1, start:0, length:2000,
                     'columns[0][data]':'consecutivo','order[0][column]':0,'order[0][dir]':'asc',
                     'search[value]':'','search[regex]':false },
             dataType:'json',
             success: function(res) {
-                var items = res.data || [];
-                $('#badge-total-cli').text(items.length);
-                if (!items.length) { $('#mobile-cli-empty').show(); return; }
-                var html = '';
-                items.forEach(function(d) {
-                    html += '<div class="v2-mcard">'
-                        + '<div class="v2-mcard-header bg-primary text-white">'
-                        + '<span><i class="fas fa-hashtag mr-1"></i>' + (d.consecutivo||'') + ' — ' + (d.nombres||'') + ' ' + (d.apellidos||'') + '</span>'
-                        + '<span class="badge ' + (d.activo==1 ? 'badge-success' : 'badge-danger') + '">' + (d.activo==1?'Activo':'Inactivo') + '</span>'
-                        + '</div>'
-                        + '<div class="v2-mcard-body">'
-                        + '<div><div class="v2-lbl">Documento</div><div class="v2-val">' + (d.tipo_documento||'') + ' ' + (d.documento||'') + '</div></div>'
-                        + '<div><div class="v2-lbl">Celular</div><div class="v2-val"><a href="tel:' + (d.celular||'') + '">' + (d.celular||'—') + '</a></div></div>'
-                        + '<div><div class="v2-lbl">Ciudad</div><div class="v2-val">' + (d.ciudad||'—') + '</div></div>'
-                        + '<div><div class="v2-lbl">Dirección</div><div class="v2-val">' + (d.direccion||'—') + '</div></div>'
-                        + '</div>'
-                        + '<div class="v2-mcard-footer">'
-                        + '<button class="btn btn-primary edit" id="' + d.id + '"><i class="far fa-edit mr-1"></i>Editar</button>'
-                        + '<button class="btn btn-warning prestamo" id="' + d.id + '"><i class="fas fa-plus-circle mr-1"></i>Préstamo</button>'
-                        + '<button class="btn btn-success detalle" id="' + d.id + '"><i class="fas fa-atlas"></i></button>'
-                        + '<button class="btn btn-dark calificacion" id="' + d.id + '"><i class="fas fa-star"></i></button>'
-                        + '</div></div>';
-                });
-                $('#mobile-cards-cli').html(html);
+                allClientItems = res.data || [];
+                $('#badge-total-cli').text(allClientItems.length);
+                filtrarYOrdenarCards();
             }
         });
     }
     loadCards();
+
+    /* Búsqueda en tiempo real */
+    $(document).on('input', '#cli-search-mobile', function() {
+        var q = $(this).val();
+        $('#cli-search-clear').toggle(q.length > 0);
+        filtrarYOrdenarCards();
+    });
+    $('#cli-search-clear').on('click', function() {
+        $('#cli-search-mobile').val('');
+        $(this).hide();
+        filtrarYOrdenarCards();
+    });
+    $('#cli-sort-mobile, #cli-filter-activo').on('change', filtrarYOrdenarCards);
 
     /* ── Abrir modal: crear ──────────────────────── */
     $('#btn-crear-desktop, #fab-cliente').on('click', function () {
