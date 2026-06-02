@@ -207,7 +207,7 @@
           <div class="card-body table-responsive p-2">
             
           <table id="pagoa" class="table table-hover table-sm responsive" cellspacing="0" width="100%">
-           <thead class="thead-light"
+           <thead class="thead-light">
             <tr>  
                   <th>Acciones</th>
                   <th># Cuota</th>
@@ -250,7 +250,7 @@
           <div class="card-body table-responsive p-2">
             
           <table id="atrasosp" class="table table-hover table-sm responsive" cellspacing="0" width="100%">
-           <thead class="thead-light"
+           <thead class="thead-light">
             <tr>  
                   <th>Acciones</th>
                   <th># Cuota</th>
@@ -293,7 +293,7 @@
           <div class="card-body table-responsive p-2">
             
           <table id="registradosp" class="table table-hover table-sm responsive" cellspacing="0" width="100%">
-           <thead class="thead-light"
+           <thead class="thead-light">
             <tr>  
                   <th>Acciones</th>
                   <th># Cuota</th>
@@ -336,7 +336,7 @@
           <div class="card-body table-responsive p-2">
             
           <table id="pagonow" class="table table-hover table-sm responsive" cellspacing="0" width="100%">
-           <thead class="thead-light"
+           <thead class="thead-light">
             <tr>  
                   <th>Acciones</th>
                   <th># Cuota</th>
