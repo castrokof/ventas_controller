@@ -96,7 +96,7 @@
         </button>
       </div>
     </div>
-    <div class="d-flex gap-1" style="gap:.35rem">
+    <div class="d-flex" style="gap:.35rem;flex-wrap:wrap">
       <select id="cli-sort-mobile" class="form-control form-control-sm" style="max-width:160px">
         <option value="consecutivo">Consecutivo ↑</option>
         <option value="nombres">Nombre A-Z</option>
@@ -108,7 +108,26 @@
         <option value="1">Activos</option>
         <option value="0">Inactivos</option>
       </select>
+      <button id="btn-editar-orden" class="btn btn-sm btn-outline-secondary" title="Editar orden de ruta">
+        <i class="fas fa-sort-numeric-down mr-1"></i>Orden
+      </button>
       <span class="badge badge-light align-self-center ml-auto" id="badge-filtrados-cli" style="display:none"></span>
+    </div>
+  </div>
+
+  {{-- Barra guardar orden (oculta hasta activar modo edición) --}}
+  <div id="orden-bar" class="d-none mb-2 px-1">
+    <div class="alert alert-warning py-2 mb-1" style="font-size:.8rem;border-radius:8px">
+      <i class="fas fa-info-circle mr-1"></i>
+      Edita el número de orden de cada cliente y pulsa <strong>Guardar</strong>.
+    </div>
+    <div class="d-flex" style="gap:.5rem">
+      <button id="btn-guardar-orden" class="btn btn-success btn-sm flex-grow-1">
+        <i class="fas fa-save mr-1"></i>Guardar orden
+      </button>
+      <button id="btn-cancelar-orden" class="btn btn-secondary btn-sm">
+        <i class="fas fa-times mr-1"></i>Cancelar
+      </button>
     </div>
   </div>
 
@@ -260,6 +279,7 @@ $(function () {
 
     /* ── Cards móvil ─────────────────────────────── */
     var allClientItems = [];
+    var modoOrden = false;
 
     function renderCards(items) {
         if (!items.length) {
@@ -277,9 +297,20 @@ $(function () {
         }
         var html = '';
         items.forEach(function(d) {
+            var consec = d.consecutivo || '';
+            var consecHtml = modoOrden
+                ? '<input type="number" class="consec-input form-control form-control-sm d-inline-block text-center font-weight-bold"'
+                  + ' data-id="' + d.id + '" value="' + consec + '"'
+                  + ' style="width:70px;border:2px solid #ffc107;border-radius:6px;padding:2px 4px"'
+                  + ' min="1" max="99999">'
+                : '<span><i class="fas fa-hashtag mr-1"></i>' + consec + '</span>';
+
             html += '<div class="v2-mcard">'
-                + '<div class="v2-mcard-header bg-primary text-white">'
-                + '<span><i class="fas fa-hashtag mr-1"></i>' + (d.consecutivo||'') + ' — ' + (d.nombres||'') + ' ' + (d.apellidos||'') + '</span>'
+                + '<div class="v2-mcard-header bg-primary text-white" style="align-items:center">'
+                + '<div style="display:flex;align-items:center;gap:.5rem">'
+                + consecHtml
+                + '<span>' + (d.nombres||'') + ' ' + (d.apellidos||'') + '</span>'
+                + '</div>'
                 + '<span class="badge ' + (d.activo==1 ? 'badge-success' : 'badge-danger') + '">' + (d.activo==1?'Activo':'Inactivo') + '</span>'
                 + '</div>'
                 + '<div class="v2-mcard-body">'
@@ -288,13 +319,15 @@ $(function () {
                 + '<div><div class="v2-lbl">Ciudad</div><div class="v2-val">' + (d.ciudad||'—') + '</div></div>'
                 + '<div><div class="v2-lbl">Dirección</div><div class="v2-val">' + (d.direccion||'—') + '</div></div>'
                 + '</div>'
-                + '<div class="v2-mcard-footer">'
+                + (modoOrden ? '' :
+                  '<div class="v2-mcard-footer">'
                 + '<button class="btn btn-primary edit" id="' + d.id + '"><i class="far fa-edit mr-1"></i>Editar</button>'
                 + '<button class="btn btn-warning prestamo" id="' + d.id + '"><i class="fas fa-plus-circle mr-1"></i>Préstamo</button>'
                 + '<button class="btn btn-success detalle" id="' + d.id + '"><i class="fas fa-atlas"></i></button>'
                 + '<button class="btn btn-dark calificacion" id="' + d.id + '"><i class="fas fa-star"></i></button>'
                 + '<button class="btn btn-info resetpwd" id="' + d.id + '" title="Restablecer contraseña portal"><i class="fas fa-key"></i></button>'
-                + '</div></div>';
+                + '</div>')
+                + '</div>';
         });
         $('#mobile-cards-cli').html(html);
     }
@@ -342,6 +375,64 @@ $(function () {
         });
     }
     loadCards();
+
+    /* ── Editar orden de consecutivo ────────────── */
+    $('#btn-editar-orden').on('click', function() {
+        modoOrden = true;
+        $('#orden-bar').removeClass('d-none');
+        $('#btn-editar-orden').addClass('active').addClass('btn-warning').removeClass('btn-outline-secondary');
+        $('#cli-search-mobile').val('').prop('disabled', true);
+        $('#cli-search-clear').hide();
+        $('#cli-sort-mobile').val('consecutivo').prop('disabled', true);
+        $('#cli-filter-activo').val('').prop('disabled', true);
+        filtrarYOrdenarCards();
+    });
+
+    $('#btn-cancelar-orden').on('click', function() {
+        modoOrden = false;
+        $('#orden-bar').addClass('d-none');
+        $('#btn-editar-orden').removeClass('active btn-warning').addClass('btn-outline-secondary');
+        $('#cli-search-mobile, #cli-sort-mobile, #cli-filter-activo').prop('disabled', false);
+        filtrarYOrdenarCards();
+    });
+
+    $('#btn-guardar-orden').on('click', function() {
+        var cambios = [];
+        $('.consec-input').each(function() {
+            var id  = parseInt($(this).data('id'), 10);
+            var val = parseInt($(this).val(), 10);
+            if (id && val > 0) cambios.push({ id: id, consecutivo: val });
+        });
+        if (!cambios.length) return;
+
+        var $btn = $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i>Guardando...');
+        var token = $('meta[name="csrf-token"]').attr('content') || $('input[name="_token"]').first().val();
+
+        $.ajax({
+            url: '{{ url("admin/v2/cliente/reordenar") }}',
+            method: 'POST',
+            dataType: 'json',
+            data: { _token: token, cambios: cambios },
+            success: function(data) {
+                if (data.success) {
+                    // actualizar allClientItems con los nuevos consecutivos
+                    cambios.forEach(function(c) {
+                        var item = allClientItems.find(function(x) { return x.id === c.id; });
+                        if (item) item.consecutivo = c.consecutivo;
+                    });
+                    $('#btn-cancelar-orden').trigger('click');
+                    tabla.ajax.reload();
+                    Swal.fire({ icon:'success', title:'Orden guardado', showConfirmButton:false, timer:1400 });
+                } else {
+                    Swal.fire('Error', data.error || 'No se pudo guardar.', 'error');
+                }
+            },
+            error: function() { Swal.fire('Error', 'Error de red. Intenta de nuevo.', 'error'); },
+            complete: function() {
+                $btn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i>Guardar orden');
+            }
+        });
+    });
 
     /* Búsqueda en tiempo real */
     $(document).on('input', '#cli-search-mobile', function() {
