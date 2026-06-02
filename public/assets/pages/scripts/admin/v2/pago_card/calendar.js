@@ -658,9 +658,13 @@ $(function () {
             $('#prestamos-container').slideUp(200);
             $(this).removeClass('activo');
         } else {
+            /* Siempre abre en filtro "Hoy" y recarga */
+            prstFiltro = 'hoy';
+            $('[data-prst-filter]').removeClass('active');
+            $('[data-prst-filter="hoy"]').addClass('active');
             $('#prestamos-container').slideDown(200);
             $(this).addClass('activo');
-            if (!prstData.length) cargarListaPrestamos();
+            cargarListaPrestamos();
         }
     });
 
@@ -677,10 +681,11 @@ $(function () {
     });
 
     $(document).on('click', '.prst-card', function () {
-        var idp    = $(this).data('idp');
-        var nombre = $(this).data('nombre');
-        var filtro = $(this).data('filtro');
-        abrirCuotasPrestamo(idp, nombre, false, filtro);
+        var idp      = $(this).data('idp');
+        var nombre   = $(this).data('nombre');
+        var filtro   = $(this).data('filtro');
+        var tieneHoy = $(this).data('tiene-hoy') == 1;
+        abrirCuotasPrestamo(idp, nombre, false, filtro, tieneHoy);
     });
 
     /* ════════════════════════════════════════════════════════════════════════
@@ -1017,14 +1022,14 @@ function escHtml(str) {
  * MODAL CUOTAS DEL PRÉSTAMO
  * ═══════════════════════════════════════════════════════════════════════════════ */
 
-function abrirCuotasPrestamo(idp, nombre, reload, filtroInicial) {
+function abrirCuotasPrestamo(idp, nombre, reload, filtroInicial, autoSelHoy) {
     mcpIdp    = idp;
     mcpNombre = nombre || ('Crédito #' + idp);
     if (!reload) {
         var fi      = filtroInicial || 'all';
         mcpCuotas   = [];
         mcpSel      = {};
-        mcpDia      = null;
+        mcpDia      = autoSelHoy ? todayStr : null;
         mcpFiltro   = fi;
         mcpCalYear  = new Date().getFullYear();
         mcpCalMonth = new Date().getMonth() + 1;
@@ -1051,17 +1056,29 @@ function abrirCuotasPrestamo(idp, nombre, reload, filtroInicial) {
         success: function (data) {
             mcpCuotas = ((data || {}).result) || [];
 
-            /* Ir al mes de la primera cuota C futura */
+            /* Navegación inicial del calendario */
             if (!reload) {
-                var futura = null;
-                for (var i = 0; i < mcpCuotas.length; i++) {
-                    var c = mcpCuotas[i];
-                    if (c.estado === 'C' && c.fecha_cuota > todayStr) { futura = c; break; }
-                }
-                if (futura) {
-                    var p = futura.fecha_cuota.split('-');
-                    mcpCalYear  = parseInt(p[0], 10);
-                    mcpCalMonth = parseInt(p[1], 10);
+                if (mcpDia === todayStr) {
+                    /* Abierto desde panel "Hoy": posicionar en hoy y mostrar etiqueta */
+                    var tp = todayStr.split('-');
+                    mcpCalYear  = parseInt(tp[0], 10);
+                    mcpCalMonth = parseInt(tp[1], 10);
+                    $('#mcp-dia-lbl span').text(
+                        parseInt(tp[2], 10) + ' de ' + MESES[mcpCalMonth - 1] + ' ' + mcpCalYear
+                    );
+                    $('#mcp-dia-lbl').show();
+                } else {
+                    /* Ir al mes de la primera cuota C futura */
+                    var futura = null;
+                    for (var i = 0; i < mcpCuotas.length; i++) {
+                        var c = mcpCuotas[i];
+                        if (c.estado === 'C' && c.fecha_cuota > todayStr) { futura = c; break; }
+                    }
+                    if (futura) {
+                        var pf = futura.fecha_cuota.split('-');
+                        mcpCalYear  = parseInt(pf[0], 10);
+                        mcpCalMonth = parseInt(pf[1], 10);
+                    }
                 }
             }
 
@@ -1349,7 +1366,8 @@ function renderListaPrestamos() {
 
         html += '<div class="prst-card ' + (tieneAtraso ? 'has-atraso' : 'no-atraso') + '"'
               + ' data-idp="' + p.idp + '" data-nombre="' + nombre + '"'
-              + ' data-filtro="' + filtroModal + '">'
+              + ' data-filtro="' + filtroModal + '"'
+              + ' data-tiene-hoy="' + (tieneHoy ? 1 : 0) + '">'
               + '  <div class="d-flex align-items-start justify-content-between">'
               + '    <div style="flex:1;min-width:0">'
               + '      <div class="prst-name text-truncate">'
