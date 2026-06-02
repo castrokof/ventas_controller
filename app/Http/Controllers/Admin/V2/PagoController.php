@@ -846,6 +846,7 @@ class PagoController extends Controller
             ->where('prestamo.usuario_id', $uid)
             ->where('prestamo.idp', $idp)
             ->whereNull('prestamo.delete_at')
+            ->where('detalle_prestamo.estado', '!=', 'T')
             ->select(
                 'detalle_prestamo.idd',
                 'detalle_prestamo.d_numero_cuota',
@@ -915,6 +916,7 @@ class PagoController extends Controller
             ->where('prestamo.usuario_id', $uid)
             ->whereNull('prestamo.delete_at')
             ->where('detalle_prestamo.fecha_cuota', $fecha)
+            ->where('detalle_prestamo.estado', '!=', 'T')
             ->select(
                 'detalle_prestamo.idd',
                 'detalle_prestamo.d_numero_cuota',
