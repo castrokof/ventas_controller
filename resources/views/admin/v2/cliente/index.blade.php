@@ -293,6 +293,7 @@ $(function () {
                 + '<button class="btn btn-warning prestamo" id="' + d.id + '"><i class="fas fa-plus-circle mr-1"></i>Préstamo</button>'
                 + '<button class="btn btn-success detalle" id="' + d.id + '"><i class="fas fa-atlas"></i></button>'
                 + '<button class="btn btn-dark calificacion" id="' + d.id + '"><i class="fas fa-star"></i></button>'
+                + '<button class="btn btn-info resetpwd" id="' + d.id + '" title="Restablecer contraseña portal"><i class="fas fa-key"></i></button>'
                 + '</div></div>';
         });
         $('#mobile-cards-cli').html(html);
@@ -449,6 +450,45 @@ $(function () {
                 $('#contenido-detalle').html(h);
             },
             error:function(){$('#contenido-detalle').html('<p class="text-danger text-center">Error.</p>');}
+        });
+    });
+
+    /* ── Restablecer contraseña portal ─────────── */
+    $(document).on('click', '.resetpwd', function () {
+        var id = $(this).attr('id');
+        Swal.fire({
+            title: '¿Restablecer contraseña?',
+            text: 'La contraseña quedará en los últimos 6 dígitos del documento del cliente.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, restablecer',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#17a2b8'
+        }).then(function(res) {
+            if (!res.value) return;
+            var token = $('meta[name="csrf-token"]').attr('content')
+                     || $('input[name="_token"]').first().val();
+            $.ajax({
+                url: '{{ url("admin/v2/cliente") }}/' + id + '/reset-password',
+                method: 'POST',
+                dataType: 'json',
+                data: { _token: token },
+                success: function(data) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Contraseña restablecida',
+                        html: '<div class="text-left">'
+                            + '<p class="mb-1">Cliente: <strong>' + (data.nombre||'') + '</strong></p>'
+                            + '<p class="mb-0">Nueva contraseña: <span class="badge badge-dark px-3 py-1"'
+                            + ' style="font-size:1rem;letter-spacing:.1em">' + (data.default||'') + '</span></p>'
+                            + '</div>',
+                        confirmButtonText: 'Entendido'
+                    });
+                },
+                error: function() {
+                    Swal.fire('Error', 'No se pudo restablecer la contraseña.', 'error');
+                }
+            });
         });
     });
 

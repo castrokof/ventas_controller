@@ -107,7 +107,11 @@ class ClienteController extends Controller
                         class="calificacion btn-float bg-gradient-dark btn-sm tooltipsC"
                         title="Calificación del cliente"><i class="fas fa-star"></i></button>';
 
-                    return $edit . $prestamo . $detalle . $calificacion;
+                    $resetpwd = '&nbsp;<button type="button" name="resetpwd" id="' . $cliente->id . '"
+                        class="resetpwd btn-float bg-gradient-info btn-sm tooltipsC"
+                        title="Restablecer contraseña portal"><i class="fas fa-key"></i></button>';
+
+                    return $edit . $prestamo . $detalle . $calificacion . $resetpwd;
                 })
                 ->rawColumns(['action'])
                 ->make(true);
@@ -289,6 +293,29 @@ class ClienteController extends Controller
             'calificacion'     => $calificacion,
             'nivel'            => $nivel,
             'prestamos'        => $historialPrestamos,
+        ]);
+    }
+
+    /**
+     * resetPassword — restablece la contraseña del portal al valor por defecto
+     * (últimos 6 dígitos del documento). Solo accesible vía AJAX.
+     * POST /admin/v2/cliente/{id}/reset-password
+     */
+    public function resetPassword(int $id): JsonResponse
+    {
+        $cliente = Cliente::where('id', $id)
+            ->whereIn('usuario_id', $this->scopeUsuarioIds())
+            ->firstOrFail();
+
+        $cliente->portal_password = null;
+        $cliente->save();
+
+        $default = substr((string) $cliente->documento, -6);
+
+        return response()->json([
+            'success' => 'ok',
+            'default' => $default,
+            'nombre'  => $cliente->nombres . ' ' . $cliente->apellidos,
         ]);
     }
 }
