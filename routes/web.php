@@ -204,8 +204,13 @@ Route::put('marca/{id}', 'MarcasController@actualizar')->name('actualizar_marca'
    
 });
 
-/* Portal de clientes — acceso público por número de documento */
-Route::get('cliente-portal', 'ClientePortalController@index')->name('cliente.portal');
+/* ── Portal de clientes — acceso público ─────────────────── */
+Route::get( 'cliente-portal',                    'ClientePortalController@index')              ->name('cliente.portal.index');
+Route::post('cliente-portal/login',              'ClientePortalController@login')             ->name('cliente.portal.login');
+Route::get( 'cliente-portal/mis-prestamos',      'ClientePortalController@dashboard')         ->name('cliente.portal.dashboard');
+Route::get( 'cliente-portal/logout',             'ClientePortalController@logout')            ->name('cliente.portal.logout');
+Route::get( 'cliente-portal/cambiar-password',   'ClientePortalController@showChangePassword')->name('cliente.portal.change_password_form');
+Route::post('cliente-portal/cambiar-password',   'ClientePortalController@changePassword')    ->name('cliente.portal.change_password');
 
 /* ══════════════════════════════════════════════════════════════
  * RUTAS V2 — Modernización progresiva (parallel path)
@@ -271,7 +276,9 @@ Route::prefix('admin/v2')
     /* AJAX: detalle de préstamos del cliente */
     Route::get( 'cliente/{id}/detalle',       'ClienteController@detalle')      ->name('cliente.detalle');
     /* AJAX: calificación/score del cliente */
-    Route::get( 'cliente/{id}/calificacion',  'ClienteController@calificacion') ->name('cliente.calificacion');
+    Route::get( 'cliente/{id}/calificacion',    'ClienteController@calificacion')  ->name('cliente.calificacion');
+    /* AJAX: restablecer contraseña del portal (→ últimos 6 dígitos del doc.) */
+    Route::post('cliente/{id}/reset-password',  'ClienteController@resetPassword') ->name('cliente.reset_password');
 
     /* ── Empleados V2 ────────────────────────────────────────────── */
     Route::get( 'empleado',              'EmpleadoController@index')    ->name('empleado.index');
