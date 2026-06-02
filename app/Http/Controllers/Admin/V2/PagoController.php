@@ -295,6 +295,7 @@ class PagoController extends Controller
             })
             ->where('prestamo.usuario_id', $uid)
             ->where('prestamo.monto_pendiente', '>', 0)
+            ->where('prestamo.estado', '!=', 'P')
             ->whereNull('prestamo.delete_at')
             ->select(
                 'prestamo.idp',
