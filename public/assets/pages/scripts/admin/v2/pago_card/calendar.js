@@ -20,6 +20,7 @@
 
 /* ── Base URL (inyectada desde la vista) ────────────────────────────────────── */
 const BASE_PC = (window.CAL_BASE || '/admin/v2/pago-card');
+const BASE_P  = BASE_PC.replace(/\/pago-card$/, '/prestamo');
 
 /* ── Idioma DataTables ──────────────────────────────────────────────────────── */
 const idioma = {
@@ -247,12 +248,12 @@ $(function () {
         var $tbody = $('#detalleCuota tbody');
         $tbody.html('<tr><td colspan="5" class="text-center"><i class="fas fa-spinner fa-spin"></i></td></tr>');
         $('#modal-d').modal('show');
-        $.get('/admin/v2/prestamo/' + idp + '/cuotas', function (data) {
+        $.get(BASE_P + '/' + idp + '/cuotas', function (data) {
             var est = {
                 C: '<span class="badge badge-warning">Pendiente</span>',
                 P: '<span class="badge badge-success">Pagada</span>',
                 A: '<span class="badge badge-danger">Atrasada</span>',
-                T: '<span class="badge badge-info">Cancelada</span>',
+                T: '<span class="badge badge-success">Saldada (total)</span>',
             };
             var rows = (data.result || []).map(function (c) {
                 return '<tr>'
@@ -345,7 +346,7 @@ $(function () {
         var $tbody = $('#detalleCuota tbody');
         $tbody.html('<tr><td colspan="5" class="text-center"><i class="fas fa-spinner fa-spin"></i></td></tr>');
         $('#modal-d').modal('show');
-        $.get('/admin/v2/prestamo/' + id + '/cuotas', function (data) {
+        $.get(BASE_P + '/' + id + '/cuotas', function (data) {
             var est = {
                 C: '<span class="badge badge-warning">Pendiente</span>',
                 P: '<span class="badge badge-success">Pagada</span>',
@@ -847,7 +848,7 @@ function cargarCuotasDia(fecha) {
                     C: '<span class="badge badge-warning">Pendiente</span>',
                     P: '<span class="badge badge-success">Pagada</span>',
                     A: '<span class="badge badge-danger">Atrasada</span>',
-                    T: '<span class="badge badge-info">Cancelada</span>',
+                    T: '<span class="badge badge-success">Saldada (total)</span>',
                 };
 
                 var html = '';
@@ -1155,7 +1156,7 @@ function mcpRenderLista() {
         C: '<span class="badge badge-warning">Pendiente</span>',
         P: '<span class="badge badge-success">Pagada</span>',
         A: '<span class="badge badge-danger">Atrasada</span>',
-        T: '<span class="badge badge-info">Cancelada</span>',
+        T: '<span class="badge badge-success">Saldada (total)</span>',
     };
 
     var html = '';
@@ -1313,31 +1314,47 @@ function cargarListaPrestamos() {
 }
 
 function renderListaPrestamos() {
-    var lista = (prstFiltro === 'atraso')
-        ? prstData.filter(function (p) { return p.cuotas_atrasadas > 0; })
-        : prstData;
+    var msgs = {
+        all:    'No hay préstamos activos.',
+        atraso: 'Sin préstamos con atrasos.',
+        hoy:    'Sin préstamos con cobro hoy.'
+    };
+
+    var lista;
+    if (prstFiltro === 'atraso') {
+        lista = prstData.filter(function (p) { return p.cuotas_atrasadas > 0; });
+    } else if (prstFiltro === 'hoy') {
+        lista = prstData.filter(function (p) { return p.cuotas_hoy > 0; });
+    } else {
+        lista = prstData;
+    }
 
     if (!lista.length) {
-        $('#prst-empty')
-            .text(prstFiltro === 'atraso' ? 'Sin préstamos con atrasos.' : 'No hay préstamos activos.')
-            .show();
+        $('#prst-empty').text(msgs[prstFiltro] || msgs.all).show();
         $('#prst-list').empty();
         return;
     }
+    $('#prst-empty').hide();
 
     var html = '';
     lista.forEach(function (p) {
         var tieneAtraso = p.cuotas_atrasadas > 0;
+        var tieneHoy    = p.cuotas_hoy > 0;
         var nombre      = escHtml(p.nombres + ' ' + p.apellidos);
         var pendiente   = parseFloat(p.monto_pendiente || 0).toLocaleString('es-CO');
         var atrasado    = parseFloat(p.monto_atrasado  || 0).toLocaleString('es-CO');
 
+        /* Al tocar: si tiene atrasos abre filtro A; si tiene cuota hoy abre C; si no, all */
+        var filtroModal = tieneAtraso ? 'A' : (tieneHoy ? 'C' : 'all');
+
         html += '<div class="prst-card ' + (tieneAtraso ? 'has-atraso' : 'no-atraso') + '"'
               + ' data-idp="' + p.idp + '" data-nombre="' + nombre + '"'
-              + ' data-filtro="' + (tieneAtraso ? 'A' : 'all') + '">'
+              + ' data-filtro="' + filtroModal + '">'
               + '  <div class="d-flex align-items-start justify-content-between">'
               + '    <div style="flex:1;min-width:0">'
-              + '      <div class="prst-name text-truncate">' + nombre + '</div>'
+              + '      <div class="prst-name text-truncate">'
+              + (tieneHoy ? '<span class="badge badge-primary mr-1" style="font-size:9px">HOY</span>' : '')
+              + nombre + '</div>'
               + '      <div class="prst-meta">'
               +          escHtml(p.tipo_pago || '') + ' · Crédito #' + p.idp
               + '      </div>'
@@ -1346,23 +1363,25 @@ function renderListaPrestamos() {
               + '      <div class="prst-val">$' + pendiente + '</div>'
               + '      <div class="prst-meta">pendiente</div>'
               + '    </div>'
-              + '  </div>';
+              + '  </div>'
+              + '  <div class="d-flex align-items-center justify-content-between mt-1">'
+              + '    <div>';
 
         if (tieneAtraso) {
-            html += '  <div class="d-flex align-items-center justify-content-between mt-1">'
-                  + '    <small class="text-danger font-weight-bold" style="font-size:11px">'
-                  + '      <i class="fas fa-exclamation-triangle mr-1"></i>'
-                  +        p.cuotas_atrasadas + ' atraso(s) · $' + atrasado
-                  + '    </small>'
-                  + '    <small class="text-muted" style="font-size:11px">Ver cuotas <i class="fas fa-chevron-right"></i></small>'
-                  + '  </div>';
-        } else {
-            html += '  <div class="mt-1">'
-                  + '    <small class="text-muted" style="font-size:11px">Ver cuotas <i class="fas fa-chevron-right"></i></small>'
-                  + '  </div>';
+            html += '<small class="text-danger font-weight-bold" style="font-size:11px">'
+                  + '<i class="fas fa-exclamation-triangle mr-1"></i>'
+                  + p.cuotas_atrasadas + ' atraso(s) · $' + atrasado + '</small>';
+        }
+        if (tieneHoy && !tieneAtraso) {
+            html += '<small class="text-primary" style="font-size:11px">'
+                  + '<i class="fas fa-calendar-day mr-1"></i>Cuota de hoy</small>';
         }
 
-        html += '</div>';
+        html += '    </div>'
+              + '    <small class="text-muted" style="font-size:11px">'
+              + 'Ver cuotas <i class="fas fa-chevron-right"></i></small>'
+              + '  </div>'
+              + '</div>';
     });
 
     $('#prst-list').html(html);

@@ -230,7 +230,11 @@ window.CAL_BASE = '{{ url("admin/v2/pago-card") }}';
         <div class="d-flex align-items-center" style="gap:4px">
           <button class="filter-btn fb-all active" data-prst-filter="all">Todos</button>
           <button class="filter-btn fb-atra"       data-prst-filter="atraso">
-            <i class="fas fa-exclamation-triangle mr-1"></i>Con atrasos
+            <i class="fas fa-exclamation-triangle mr-1"></i>Atrasos
+          </button>
+          <button class="filter-btn"              data-prst-filter="hoy"
+                  style="border-color:#6366f1;color:#6366f1">
+            <i class="fas fa-calendar-day mr-1"></i>Hoy
           </button>
           <button id="btn-prst-refresh" class="btn btn-xs btn-outline-secondary ml-1"
                   title="Recargar" style="padding:2px 7px;font-size:11px">
@@ -616,8 +620,9 @@ window.CAL_BASE = '{{ url("admin/v2/pago-card") }}';
           </h6>
           <small id="mcp-subtitulo" style="opacity:.85;font-size:11px"></small>
         </div>
-        <button type="button" class="close text-white ml-2" data-dismiss="modal">
-          <span>&times;</span>
+        <button type="button" class="btn btn-sm btn-light ml-2" data-dismiss="modal"
+                style="font-size:11px;padding:3px 10px">
+          <i class="fas fa-times mr-1"></i>Cerrar
         </button>
       </div>
 

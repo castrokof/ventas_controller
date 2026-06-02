@@ -160,6 +160,37 @@
 
 </div>
 
+{{-- ── Fila 3: opciones de calendario ─────────────────────────── --}}
+<div class="form-group row">
+  <div class="col-12">
+    <label class="font-weight-bold d-block mb-1">
+      <i class="fas fa-calendar-alt fa-xs mr-1 text-muted" aria-hidden="true"></i>
+      Opciones de calendario
+    </label>
+    <div class="d-flex flex-wrap" style="gap:18px">
+      <div class="custom-control custom-switch">
+        <input type="checkbox" class="custom-control-input"
+               name="incluir_domingo" id="incluir_domingo" value="1">
+        <label class="custom-control-label" for="incluir_domingo">
+          Cobrar domingos
+        </label>
+      </div>
+      <div class="custom-control custom-switch">
+        <input type="checkbox" class="custom-control-input"
+               name="incluir_festivo" id="incluir_festivo" value="1">
+        <label class="custom-control-label" for="incluir_festivo">
+          Cobrar feriados argentinos
+        </label>
+      </div>
+    </div>
+    <small class="text-muted mt-1 d-block">
+      <i class="fas fa-info-circle mr-1" aria-hidden="true"></i>
+      Por defecto se saltan domingos y feriados nacionales (Argentina).
+      Actívalos solo si el acuerdo lo requiere.
+    </small>
+  </div>
+</div>
+
 {{-- ── Nota informativa ─────────────────────────────────────── --}}
 <div class="alert alert-light border-left border-info pl-3 py-2 mb-0" role="note">
   <small class="text-muted">

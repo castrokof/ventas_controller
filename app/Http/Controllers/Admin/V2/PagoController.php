@@ -284,9 +284,15 @@ class PagoController extends Controller
     public function listaPrestamos(Request $request): JsonResponse
     {
         $uid = $request->session()->get('usuario_id');
+        $hoy = $this->hoy();
 
         $rows = DB::table('prestamo')
             ->join('cliente', 'prestamo.cliente_id', '=', 'cliente.id')
+            ->leftJoin('detalle_prestamo as dp_hoy', function ($join) use ($hoy) {
+                $join->on('dp_hoy.prestamo_id', '=', 'prestamo.idp')
+                     ->where('dp_hoy.fecha_cuota', '=', $hoy)
+                     ->whereIn('dp_hoy.estado', ['C', 'A']);
+            })
             ->where('prestamo.usuario_id', $uid)
             ->where('prestamo.monto_pendiente', '>', 0)
             ->whereNull('prestamo.delete_at')
@@ -300,7 +306,13 @@ class PagoController extends Controller
                 'prestamo.tipo_pago',
                 'cliente.nombres',
                 'cliente.apellidos',
-                'cliente.celular'
+                'cliente.celular',
+                DB::raw('COUNT(dp_hoy.idd) as cuotas_hoy')
+            )
+            ->groupBy(
+                'prestamo.idp', 'prestamo.monto_pendiente', 'prestamo.monto_atrasado',
+                'prestamo.cuotas_atrasadas', 'prestamo.valor_cuota', 'prestamo.cuotas',
+                'prestamo.tipo_pago', 'cliente.nombres', 'cliente.apellidos', 'cliente.celular'
             )
             ->orderByDesc('prestamo.cuotas_atrasadas')
             ->orderByDesc('prestamo.monto_atrasado')
