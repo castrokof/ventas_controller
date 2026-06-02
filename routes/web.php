@@ -204,6 +204,9 @@ Route::put('marca/{id}', 'MarcasController@actualizar')->name('actualizar_marca'
    
 });
 
+/* Portal de clientes — acceso público por número de documento */
+Route::get('cliente-portal', 'ClientePortalController@index')->name('cliente.portal');
+
 /* ══════════════════════════════════════════════════════════════
  * RUTAS V2 — Modernización progresiva (parallel path)
  * NO modificar ni eliminar las rutas originales de arriba.
@@ -266,7 +269,9 @@ Route::prefix('admin/v2')
     Route::get( 'cliente/{id}/editar',  'ClienteController@editar')   ->name('cliente.editar');
     Route::put( 'cliente/{id}',         'ClienteController@actualizar')->name('cliente.actualizar');
     /* AJAX: detalle de préstamos del cliente */
-    Route::get( 'cliente/{id}/detalle', 'ClienteController@detalle')  ->name('cliente.detalle');
+    Route::get( 'cliente/{id}/detalle',       'ClienteController@detalle')      ->name('cliente.detalle');
+    /* AJAX: calificación/score del cliente */
+    Route::get( 'cliente/{id}/calificacion',  'ClienteController@calificacion') ->name('cliente.calificacion');
 
     /* ── Empleados V2 ────────────────────────────────────────────── */
     Route::get( 'empleado',              'EmpleadoController@index')    ->name('empleado.index');

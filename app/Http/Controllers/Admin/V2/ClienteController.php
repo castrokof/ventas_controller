@@ -103,7 +103,11 @@ class ClienteController extends Controller
                         class="detalle btn-float bg-gradient-success btn-sm tooltipsC"
                         title="Detalle de Préstamos"><i class="fas fa-atlas"></i></button>';
 
-                    return $edit . $prestamo . $detalle;
+                    $calificacion = '&nbsp;<button type="button" name="calificacion" id="' . $cliente->id . '"
+                        class="calificacion btn-float bg-gradient-dark btn-sm tooltipsC"
+                        title="Calificación del cliente"><i class="fas fa-star"></i></button>';
+
+                    return $edit . $prestamo . $detalle . $calificacion;
                 })
                 ->rawColumns(['action'])
                 ->make(true);
@@ -179,5 +183,112 @@ class ClienteController extends Controller
             ->get();
 
         return response()->json(['result' => $result]);
+    }
+
+    /**
+     * calificacion — historial de pago y score del cliente (AJAX).
+     * GET /admin/v2/cliente/{id}/calificacion
+     */
+    public function calificacion(int $id): JsonResponse
+    {
+        $cliente = Cliente::where('id', $id)
+            ->whereIn('usuario_id', $this->scopeUsuarioIds())
+            ->firstOrFail();
+
+        // Préstamos del cliente (visibles por scope)
+        $prestamoIds = Prestamo::where('cliente_id', $id)
+            ->whereIn('usuario_id', $this->scopeUsuarioIds())
+            ->whereNull('delete_at')
+            ->pluck('idp')
+            ->toArray();
+
+        $totalPrestamos = count($prestamoIds);
+
+        if ($totalPrestamos === 0) {
+            return response()->json([
+                'cliente'        => $cliente->nombres . ' ' . $cliente->apellidos,
+                'documento'      => $cliente->documento,
+                'total_prestamos'=> 0,
+                'total_cuotas'   => 0,
+                'pagadas'        => 0,
+                'atrasadas'      => 0,
+                'pendientes'     => 0,
+                'monto_total'    => 0,
+                'monto_pagado'   => 0,
+                'score'          => 100,
+                'calificacion'   => 'Sin historial',
+                'nivel'          => 'nuevo',
+            ]);
+        }
+
+        // Estadísticas de cuotas
+        $stats = DB::table('detalle_prestamo')
+            ->whereIn('prestamo_id', $prestamoIds)
+            ->selectRaw('
+                COUNT(*) as total,
+                SUM(CASE WHEN estado IN (\'P\',\'T\') THEN 1 ELSE 0 END) as pagadas,
+                SUM(CASE WHEN estado = \'A\'           THEN 1 ELSE 0 END) as atrasadas,
+                SUM(CASE WHEN estado = \'C\'           THEN 1 ELSE 0 END) as pendientes,
+                SUM(valor_cuota)        as monto_total,
+                SUM(valor_cuota_pagada) as monto_pagado
+            ')
+            ->first();
+
+        $total     = (int)   ($stats->total      ?? 0);
+        $pagadas   = (int)   ($stats->pagadas    ?? 0);
+        $atrasadas = (int)   ($stats->atrasadas  ?? 0);
+        $pendientes= (int)   ($stats->pendientes ?? 0);
+        $historial = $pagadas + $atrasadas; // cuotas ya vencidas (base del score)
+
+        // Score: % de cuotas vencidas que se pagaron; si sin historial 100
+        $score = $historial > 0
+            ? round($pagadas / $historial * 100)
+            : 100;
+
+        // Penalización por atrasadas actuales
+        $score = max(0, $score - min($atrasadas * 2, 20));
+
+        if ($score >= 90 && $atrasadas === 0) {
+            $nivel = 'A'; $calificacion = 'Excelente';
+        } elseif ($score >= 75) {
+            $nivel = 'B'; $calificacion = 'Bueno';
+        } elseif ($score >= 55) {
+            $nivel = 'C'; $calificacion = 'Regular';
+        } else {
+            $nivel = 'D'; $calificacion = 'Alto riesgo';
+        }
+
+        // Historial por préstamo
+        $historialPrestamos = DB::table('prestamo')
+            ->whereIn('prestamo.idp', $prestamoIds)
+            ->selectRaw('
+                prestamo.idp, prestamo.monto, prestamo.monto_pendiente,
+                prestamo.cuotas, prestamo.tipo_pago, prestamo.fecha_inicial,
+                prestamo.estado as estado_prestamo,
+                SUM(CASE WHEN dp.estado IN (\'P\',\'T\') THEN 1 ELSE 0 END) as dp_pagadas,
+                SUM(CASE WHEN dp.estado = \'A\'          THEN 1 ELSE 0 END) as dp_atrasadas
+            ')
+            ->leftJoin('detalle_prestamo as dp', 'prestamo.idp', '=', 'dp.prestamo_id')
+            ->groupBy('prestamo.idp','prestamo.monto','prestamo.monto_pendiente',
+                      'prestamo.cuotas','prestamo.tipo_pago','prestamo.fecha_inicial',
+                      'prestamo.estado')
+            ->orderByDesc('prestamo.idp')
+            ->get();
+
+        return response()->json([
+            'cliente'          => $cliente->nombres . ' ' . $cliente->apellidos,
+            'documento'        => $cliente->documento,
+            'total_prestamos'  => $totalPrestamos,
+            'total_cuotas'     => $total,
+            'pagadas'          => $pagadas,
+            'atrasadas'        => $atrasadas,
+            'pendientes'       => $pendientes,
+            'monto_total'      => round((float)($stats->monto_total  ?? 0), 2),
+            'monto_pagado'     => round((float)($stats->monto_pagado ?? 0), 2),
+            'score'            => $score,
+            'calificacion'     => $calificacion,
+            'nivel'            => $nivel,
+            'prestamos'        => $historialPrestamos,
+        ]);
     }
 }
