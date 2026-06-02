@@ -297,6 +297,35 @@ class ClienteController extends Controller
     }
 
     /**
+     * reordenar — actualiza el consecutivo de varios clientes en una sola llamada.
+     * POST /admin/v2/cliente/reordenar
+     * Body: cambios[] = [{id, consecutivo}, ...]
+     */
+    public function reordenar(Request $request): JsonResponse
+    {
+        $cambios = $request->input('cambios', []);
+        if (empty($cambios)) {
+            return response()->json(['error' => 'Sin cambios.'], 422);
+        }
+
+        $uids = $this->scopeUsuarioIds();
+
+        DB::transaction(function () use ($cambios, $uids) {
+            foreach ($cambios as $c) {
+                $id   = (int) ($c['id']          ?? 0);
+                $cons = (int) ($c['consecutivo'] ?? 0);
+                if ($id > 0 && $cons > 0) {
+                    Cliente::where('id', $id)
+                        ->whereIn('usuario_id', $uids)
+                        ->update(['consecutivo' => $cons]);
+                }
+            }
+        });
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
      * resetPassword — restablece la contraseña del portal al valor por defecto
      * (últimos 6 dígitos del documento). Solo accesible vía AJAX.
      * POST /admin/v2/cliente/{id}/reset-password

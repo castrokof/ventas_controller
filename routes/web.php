@@ -268,8 +268,10 @@ Route::prefix('admin/v2')
 
     /* ── Clientes V2 ─────────────────────────────────────────────── */
     /* Vista principal (lista DataTable AJAX) + crear */
-    Route::get( 'cliente',              'ClienteController@index')    ->name('cliente.index');
-    Route::post('cliente',              'ClienteController@guardar')  ->name('cliente.guardar');
+    Route::get( 'cliente',                   'ClienteController@index')     ->name('cliente.index');
+    Route::post('cliente',                   'ClienteController@guardar')   ->name('cliente.guardar');
+    /* Reordenar consecutivos en batch */
+    Route::post('cliente/reordenar',         'ClienteController@reordenar') ->name('cliente.reordenar');
     /* Editar / actualizar */
     Route::get( 'cliente/{id}/editar',  'ClienteController@editar')   ->name('cliente.editar');
     Route::put( 'cliente/{id}',         'ClienteController@actualizar')->name('cliente.actualizar');
