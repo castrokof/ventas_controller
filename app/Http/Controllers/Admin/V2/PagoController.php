@@ -939,8 +939,14 @@ class PagoController extends Controller
             ->select($selectCampos)
             ->get();
 
-        // 2. Préstamos activos sin cuota en $fecha → mostrar su próxima cuota pendiente/atrasada
-        $idsConCuota = $rows->pluck('idp')->toArray();
+        // 2. Préstamos activos sin cuota ACTIVA en $fecha → mostrar su próxima cuota pendiente/atrasada
+        // Solo excluir préstamos que ya tienen cuota C o A hoy (no pagadas), para que los que
+        // tienen únicamente cuotas pagadas hoy puedan mostrar sus atrasos pendientes vía $rowsExtra.
+        $idsConCuotaActiva = $rows
+            ->filter(fn ($r) => in_array($r->estado, ['C', 'A']))
+            ->pluck('idp')
+            ->unique()
+            ->toArray();
 
         $minCuotasSub = DB::table('detalle_prestamo as dp_inner')
             ->select('dp_inner.prestamo_id', DB::raw('MIN(dp_inner.d_numero_cuota) as min_cuota'))
@@ -950,7 +956,7 @@ class PagoController extends Controller
             ->where('p_inner.monto_pendiente', '>', 0)
             ->where('p_inner.estado', '!=', 'P')
             ->whereIn('dp_inner.estado', ['A', 'C'])
-            ->when(!empty($idsConCuota), fn ($q) => $q->whereNotIn('dp_inner.prestamo_id', $idsConCuota))
+            ->when(!empty($idsConCuotaActiva), fn ($q) => $q->whereNotIn('dp_inner.prestamo_id', $idsConCuotaActiva))
             ->groupBy('dp_inner.prestamo_id');
 
         $selectExtra = [

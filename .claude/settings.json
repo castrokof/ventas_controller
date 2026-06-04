@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php artisan *)",
+      "Bash(php -l /home/u359728731/domains/manteliviano.com/coll_system/app/Http/Controllers/Admin/V2/GpsController.php)"
+    ]
+  }
+}

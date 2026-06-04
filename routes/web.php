@@ -296,6 +296,15 @@ Route::prefix('admin/v2')
     Route::get( 'gasto/{id}/editar',  'GastoController@editar')   ->name('gasto.editar');
     Route::put( 'gasto/{id}',         'GastoController@actualizar')->name('gasto.actualizar');
 
+    /* ── GPS Tracking V2 — solo admin y empresa ──────────────────── */
+    Route::middleware('soloEmpresaAdmin')->group(function () {
+        Route::get( 'gps',           'GpsController@index')    ->name('gps.index');
+        Route::get( 'gps/datos',     'GpsController@datos')    ->name('gps.datos');
+        Route::get( 'gps/usuarios',  'GpsController@usuarios') ->name('gps.usuarios');
+    });
+    /* El cobrador puede registrar su propia posición (sin restricción de rol) */
+    Route::post('gps/registrar', 'GpsController@registrar')->name('gps.registrar');
+
 });
 
 Route::group(['middleware' => ['auth','superEditor']], function () {
