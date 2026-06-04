@@ -910,6 +910,25 @@ class PagoController extends Controller
         $uid   = $request->session()->get('usuario_id');
         $fecha = $request->fecha ?? $this->hoy();
 
+        $selectCampos = [
+            'detalle_prestamo.idd',
+            'detalle_prestamo.d_numero_cuota',
+            'detalle_prestamo.fecha_cuota',
+            'detalle_prestamo.valor_cuota',
+            'detalle_prestamo.valor_cuota_pagada',
+            'detalle_prestamo.estado',
+            'detalle_prestamo.prestamo_id',
+            'cliente.nombres',
+            'cliente.apellidos',
+            'cliente.celular',
+            'cliente.consecutivo',
+            'prestamo.monto_atrasado',
+            'prestamo.cuotas_atrasadas',
+            'prestamo.tipo_pago',
+            'prestamo.idp',
+        ];
+
+        // 1. Cuotas programadas para el día seleccionado
         $rows = DB::table('detalle_prestamo')
             ->join('prestamo', 'detalle_prestamo.prestamo_id', '=', 'prestamo.idp')
             ->join('cliente',  'prestamo.cliente_id',          '=', 'cliente.id')
@@ -917,25 +936,47 @@ class PagoController extends Controller
             ->whereNull('prestamo.delete_at')
             ->where('detalle_prestamo.fecha_cuota', $fecha)
             ->where('detalle_prestamo.estado', '!=', 'T')
-            ->select(
-                'detalle_prestamo.idd',
-                'detalle_prestamo.d_numero_cuota',
-                'detalle_prestamo.valor_cuota',
-                'detalle_prestamo.valor_cuota_pagada',
-                'detalle_prestamo.estado',
-                'detalle_prestamo.prestamo_id',
-                'cliente.nombres',
-                'cliente.apellidos',
-                'cliente.celular',
-                'prestamo.monto_atrasado',
-                'prestamo.cuotas_atrasadas',
-                'prestamo.tipo_pago',
-                'prestamo.idp'
-            )
-            ->orderByRaw("FIELD(detalle_prestamo.estado, 'A', 'C', 'P', 'T')")
+            ->select($selectCampos)
             ->get();
 
-        return response()->json(['result' => $rows]);
+        // 2. Préstamos activos sin cuota en $fecha → mostrar su próxima cuota pendiente/atrasada
+        $idsConCuota = $rows->pluck('idp')->toArray();
+
+        $minCuotasSub = DB::table('detalle_prestamo as dp_inner')
+            ->select('dp_inner.prestamo_id', DB::raw('MIN(dp_inner.d_numero_cuota) as min_cuota'))
+            ->join('prestamo as p_inner', 'dp_inner.prestamo_id', '=', 'p_inner.idp')
+            ->where('p_inner.usuario_id', $uid)
+            ->whereNull('p_inner.delete_at')
+            ->where('p_inner.monto_pendiente', '>', 0)
+            ->where('p_inner.estado', '!=', 'P')
+            ->whereIn('dp_inner.estado', ['A', 'C'])
+            ->when(!empty($idsConCuota), fn ($q) => $q->whereNotIn('dp_inner.prestamo_id', $idsConCuota))
+            ->groupBy('dp_inner.prestamo_id');
+
+        $selectExtra = [
+            'dp.idd', 'dp.d_numero_cuota', 'dp.fecha_cuota',
+            'dp.valor_cuota', 'dp.valor_cuota_pagada', 'dp.estado',
+            'dp.prestamo_id',
+            'cliente.nombres', 'cliente.apellidos', 'cliente.celular', 'cliente.consecutivo',
+            'prestamo.monto_atrasado', 'prestamo.cuotas_atrasadas', 'prestamo.tipo_pago', 'prestamo.idp',
+        ];
+
+        $rowsExtra = DB::table('detalle_prestamo as dp')
+            ->joinSub($minCuotasSub, 'min_dp', function ($join) {
+                $join->on('dp.prestamo_id',    '=', 'min_dp.prestamo_id')
+                     ->on('dp.d_numero_cuota', '=', 'min_dp.min_cuota');
+            })
+            ->join('prestamo', 'dp.prestamo_id', '=', 'prestamo.idp')
+            ->join('cliente',  'prestamo.cliente_id', '=', 'cliente.id')
+            ->whereIn('dp.estado', ['A', 'C'])
+            ->select($selectExtra)
+            ->get();
+
+        $all = $rows->concat($rowsExtra)
+            ->sortBy(fn ($item) => (int) ($item->consecutivo ?? 0))
+            ->values();
+
+        return response()->json(['result' => $all]);
     }
 
     // ──────────────────────────────────────────────────────────────────────

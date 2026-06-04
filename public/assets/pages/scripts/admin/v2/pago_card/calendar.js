@@ -43,11 +43,13 @@ const MESES = [
 ];
 const DIAS_SEM = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
 
-let calYear  = new Date().getFullYear();
-let calMonth = new Date().getMonth() + 1;
+/* Fecha de hoy en zona horaria de Argentina (UTC-3, sin DST) */
+const todayStr = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Argentina/Buenos_Aires' });
+
+let calYear  = parseInt(todayStr.slice(0, 4), 10);
+let calMonth = parseInt(todayStr.slice(5, 7), 10);
 let calData  = {};
 let selDate  = null;
-const todayStr = new Date().toISOString().slice(0, 10);
 
 /* ── Selección masiva ───────────────────────────────────────────────────────── */
 var selMasivo    = false;
@@ -61,8 +63,8 @@ var prstFiltro  = 'all';
 var mcpIdp      = null;
 var mcpNombre   = '';
 var mcpCuotas   = [];
-var mcpCalYear  = new Date().getFullYear();
-var mcpCalMonth = new Date().getMonth() + 1;
+var mcpCalYear  = parseInt(todayStr.slice(0, 4), 10);
+var mcpCalMonth = parseInt(todayStr.slice(5, 7), 10);
 var mcpFiltro   = 'all';
 var mcpDia      = null;
 var mcpSel      = {};
@@ -157,9 +159,8 @@ $(function () {
 
     /* ── Ir a hoy ─────────────────────────────────────────────────────────── */
     $('#btn-hoy').on('click', function () {
-        var now = new Date();
-        calYear  = now.getFullYear();
-        calMonth = now.getMonth() + 1;
+        calYear  = parseInt(todayStr.slice(0, 4), 10);
+        calMonth = parseInt(todayStr.slice(5, 7), 10);
         cambiarDia(todayStr);
     });
 
@@ -1125,8 +1126,8 @@ function abrirCuotasPrestamo(idp, nombre, reload, filtroInicial, autoSelHoy) {
         mcpSel      = {};
         mcpDia      = autoSelHoy ? todayStr : null;
         mcpFiltro   = fi;
-        mcpCalYear  = new Date().getFullYear();
-        mcpCalMonth = new Date().getMonth() + 1;
+        mcpCalYear  = parseInt(todayStr.slice(0, 4), 10);
+        mcpCalMonth = parseInt(todayStr.slice(5, 7), 10);
         $('[data-mcp-filter]').removeClass('active');
         $('[data-mcp-filter="' + fi + '"]').addClass('active');
     }
@@ -1272,8 +1273,8 @@ function mcpRenderLista() {
 
     var html = '';
     filtradas.forEach(function (c) {
-        var esPagada  = c.estado === 'P' || c.estado === 'T';
-        var esFuturaC = c.estado === 'C' && c.fecha_cuota > todayStr;
+        var esPagada     = c.estado === 'P' || c.estado === 'T';
+        var seleccionable = c.estado === 'C';
         var badge     = estadoBadges[c.estado] || c.estado;
         var valor     = parseFloat(c.valor_cuota || 0).toLocaleString('es-CO');
         var yaSel     = !!mcpSel[c.idd];
@@ -1282,7 +1283,7 @@ function mcpRenderLista() {
         var fp   = c.fecha_cuota.split('-');
         var fLbl = parseInt(fp[2], 10) + ' ' + MESES[parseInt(fp[1], 10) - 1].slice(0, 3);
 
-        var checkHtml = esFuturaC
+        var checkHtml = seleccionable
             ? '<input type="checkbox" class="mcp-check" data-idd="' + c.idd + '"' + (yaSel ? ' checked' : '') + '>'
             : '<span style="width:16px;display:inline-block;flex-shrink:0"></span>';
 
@@ -1311,7 +1312,7 @@ function mcpActualizarFooter() {
     var monto = lista.reduce(function (a, c) { return a + parseFloat(c.valor_cuota || 0); }, 0);
 
     if (n === 0) {
-        $('#mcp-sel-info').text('Toca el checkbox de una cuota futura para seleccionar');
+        $('#mcp-sel-info').text('Selecciona cuotas pendientes para pagar en conjunto');
         $('#btn-mcp-pagar').prop('disabled', true);
     } else {
         $('#mcp-sel-info').text(n + ' cuota(s) · $' + monto.toLocaleString('es-CO'));
@@ -1374,7 +1375,7 @@ function mcpPagarSeleccionadas() {
                 valor_cuota:  c.valor_cuota,
                 valor_abono:  c.valor_cuota,
                 estado_cuota: 'C',
-                fecha_pago:   c.fecha_cuota,
+                fecha_pago:   c.fecha_cuota <= todayStr ? todayStr : c.fecha_cuota,
                 vatraso:      0,
                 observacion_pago: ''
             },
