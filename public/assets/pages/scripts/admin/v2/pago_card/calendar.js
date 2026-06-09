@@ -480,6 +480,20 @@ $(function () {
                 data:     data,
                 dataType: 'json',
                 success: function (resp) {
+                    /* Pago guardado offline por el Service Worker */
+                    if (resp.offline_queued) {
+                        $('#modal-pd').modal('hide');
+                        if (typeof pwaAddCount === 'function') pwaAddCount(1);
+                        Swal.fire({
+                            icon: 'info',
+                            title: 'Sin conexión',
+                            text: 'Pago guardado localmente. Se enviará al servidor cuando recuperes señal.',
+                            showConfirmButton: false,
+                            timer: 3500,
+                        });
+                        return;
+                    }
+
                     var mensajes = {
                         ok:          'Pago registrado correctamente.',
                         total:       'Crédito cancelado en su totalidad.',
@@ -1380,9 +1394,14 @@ function mcpPagarSeleccionadas() {
                 observacion_pago: ''
             },
             success: function (resp) {
-                var errores = ['error','noadelanto','noa','adelantos','vcda','adelantosa','okcaerror'];
-                if (errores.includes(resp.success)) fail++;
-                else ok++;
+                if (resp.offline_queued) {
+                    /* Contado como ok; la barra PWA actualizará el badge */
+                    if (typeof pwaAddCount === 'function') pwaAddCount(1);
+                    ok++;
+                } else {
+                    var errores = ['error','noadelanto','noa','adelantos','vcda','adelantosa','okcaerror'];
+                    if (errores.includes(resp.success)) fail++; else ok++;
+                }
                 siguiente();
             },
             error: function () {
