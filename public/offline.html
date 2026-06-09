@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sin conexión — Coll-System</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+     background:#f3f4f6;display:flex;align-items:center;justify-content:center;
+     min-height:100vh;padding:20px}
+.card{background:#fff;border-radius:18px;padding:36px 28px;max-width:400px;width:100%;
+      box-shadow:0 4px 30px rgba(0,0,0,.1);text-align:center}
+.icon{font-size:60px;margin-bottom:20px}
+h1{font-size:1.3rem;color:#1e1b4b;margin-bottom:10px}
+p{font-size:.9rem;color:#6b7280;line-height:1.6;margin-bottom:22px}
+.badge{display:inline-block;border-radius:20px;padding:6px 16px;
+       font-size:.82rem;font-weight:600;margin-bottom:24px;
+       background:#fef3c7;color:#92400e;border:1px solid #fcd34d}
+.badge.ok{background:#d1fae5;color:#065f46;border-color:#6ee7b7}
+.btn{display:block;width:100%;padding:13px;border:none;border-radius:12px;
+     font-size:.95rem;font-weight:600;cursor:pointer;transition:opacity .15s}
+.btn:hover{opacity:.85}
+.btn-primary{background:#6366f1;color:#fff;margin-bottom:10px}
+.btn-primary:disabled{background:#a5b4fc;cursor:not-allowed}
+.btn-secondary{background:#f3f4f6;color:#374151}
+#msg{font-size:.82rem;color:#6b7280;margin-top:14px;min-height:18px}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="icon">📡</div>
+  <h1>Sin conexión a internet</h1>
+  <p>La app está funcionando en modo offline. Los pagos registrados se guardan en tu dispositivo y se sincronizan automáticamente cuando recuperes la señal.</p>
+  <div id="badge" class="badge">Verificando pagos pendientes…</div>
+  <button class="btn btn-primary" id="btn-sync" onclick="sincronizar()">
+    🔄 Sincronizar pagos ahora
+  </button>
+  <button class="btn btn-secondary" onclick="history.back()">← Volver a la app</button>
+  <div id="msg"></div>
+</div>
+
+<script>
+function setBadge(n) {
+    var el = document.getElementById('badge');
+    if (n > 0) {
+        el.className = 'badge';
+        el.textContent = n + ' pago(s) pendiente(s) de sincronizar';
+    } else {
+        el.className = 'badge ok';
+        el.textContent = '✓ No hay pagos pendientes';
+    }
+}
+function setMsg(txt) { document.getElementById('msg').textContent = txt; }
+
+function actualizarConteo() {
+    var ctrl = navigator.serviceWorker && navigator.serviceWorker.controller;
+    if (!ctrl) { setBadge(0); return; }
+    var mc = new MessageChannel();
+    mc.port1.onmessage = function(e) { setBadge(e.data.n || 0); };
+    ctrl.postMessage({ type: 'GET_COUNT' }, [mc.port2]);
+}
+
+function sincronizar() {
+    if (!navigator.onLine) { setMsg('Aún sin señal. Intenta cuando tengas internet.'); return; }
+    var ctrl = navigator.serviceWorker && navigator.serviceWorker.controller;
+    if (!ctrl) { setMsg('Service Worker no activo. Recarga la página.'); return; }
+
+    var btn = document.getElementById('btn-sync');
+    btn.disabled = true; btn.textContent = '⏳ Sincronizando…';
+
+    var mc = new MessageChannel();
+    mc.port1.onmessage = function(e) {
+        btn.disabled = false; btn.textContent = '🔄 Sincronizar pagos ahora';
+        var d = e.data;
+        var txt = '';
+        if (d.ok)   txt += d.ok + ' pago(s) sincronizado(s). ';
+        if (d.fail) txt += d.fail + ' pago(s) con error de red. ';
+        if (d.csrf) txt += d.csrf + ' pago(s) con sesión caducada — recarga la app e intenta de nuevo.';
+        setMsg(txt || 'Sin cambios.');
+        actualizarConteo();
+    };
+    ctrl.postMessage({ type: 'SYNC_NOW' }, [mc.port2]);
+}
+
+window.addEventListener('load', actualizarConteo);
+window.addEventListener('online', function() {
+    setMsg('¡Señal recuperada! Sincronizando…');
+    sincronizar();
+});
+</script>
+</body>
+</html>

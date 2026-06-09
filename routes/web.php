@@ -18,6 +18,41 @@ if(version_compare(PHP_VERSION, '7.2.0', '>=')) { error_reporting(E_ALL ^ E_NOTI
 
 /* RUTAS IMAGENES TEXTO */
 
+/* ── PWA — sin autenticación ─────────────────────────────────────────────── */
+Route::get('manifest.json', function () {
+    return response()->json([
+        'name'             => 'Coll-System',
+        'short_name'       => 'Coll-System',
+        'description'      => 'Gestión de cobros y rutas',
+        'start_url'        => url('admin/v2/pago-card'),
+        'scope'            => url('/') . '/',
+        'display'          => 'standalone',
+        'background_color' => '#ffffff',
+        'theme_color'      => '#6366f1',
+        'orientation'      => 'portrait-primary',
+        'icons'            => [
+            ['src' => url('pwa/icon/192'), 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any maskable'],
+            ['src' => url('pwa/icon/512'), 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any maskable'],
+        ],
+    ], 200, ['Content-Type' => 'application/manifest+json']);
+})->name('pwa.manifest');
+
+Route::get('pwa/icon/{size}', function ($size) {
+    $s  = in_array((int) $size, [180, 192, 512]) ? (int) $size : 192;
+    $img = imagecreatetruecolor($s, $s);
+    $bg  = imagecolorallocate($img, 99, 102, 241);   /* #6366f1 */
+    $wh  = imagecolorallocate($img, 255, 255, 255);
+    imagefill($img, 0, 0, $bg);
+    /* Círculo blanco central (aspecto de moneda/app) */
+    $cx = $cy = (int) ($s / 2);
+    $r  = (int) ($s * 0.36);
+    imagefilledellipse($img, $cx, $cy, $r * 2, $r * 2, $wh);
+    $ir = (int) ($s * 0.24);
+    imagefilledellipse($img, $cx, $cy, $ir * 2, $ir * 2, $bg);
+    ob_start(); imagepng($img); $data = ob_get_clean(); imagedestroy($img);
+    return response($data, 200, ['Content-Type' => 'image/png', 'Cache-Control' => 'public, max-age=86400']);
+})->name('pwa.icon');
+
 Route::get('logs', '\Rap2hpoutre\LaravelLogViewer\LogViewerController@index');
 //Route::get('/', 'Admin\InicioController@index')->name('inicio');
 Route::get('/', 'Seguridad\LoginController@index')->name('inicio');

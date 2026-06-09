@@ -5,6 +5,10 @@
     Cobros / Ruta V2
 @endsection
 
+@push('pwa')
+@include('admin.v2._partials.pwa')
+@endpush
+
 @section('styles')
 <link href="{{ asset("assets/css/select2-bootstrap.min.css") }}" rel="stylesheet">
 <link href="{{ asset("assets/css/select2.min.css") }}" rel="stylesheet">
