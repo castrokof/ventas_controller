@@ -195,6 +195,9 @@ $(function () {
         $('#form-result-prestamo').html('');
         /* Resetear valores de select2 al abrir */
         $('#modal-pc .select2bs4').val(null).trigger('change');
+        /* Restaurar usuario (es el propio usuario logueado, no lo selecciona el operador) */
+        const $usr = $('#usuario_idp');
+        $usr.val($usr.find('option[value!=""]').first().val()).trigger('change');
     });
 
     /* Inicializar select2 cuando el modal ya es visible (necesario para dropdownParent) */

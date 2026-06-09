@@ -344,6 +344,13 @@
               Nuevo préstamo
             </h6>
 
+            {{-- ── Dinero a entregar al cliente ────────────────── --}}
+            <div id="refi-entrega-row" class="alert py-2 mb-3" style="display:none">
+              <i class="fas fa-hand-holding-usd mr-1"></i>
+              Dinero a entregar al cliente: <strong id="refi_entrega_label">$0</strong>
+              <small class="text-muted d-block">= Nuevo monto − Saldo pendiente del préstamo actual</small>
+            </div>
+
             {{-- ── Sección B: Nuevo préstamo ────────────────────── --}}
             @include('admin.v2.prestamo.form-prestamo')
 

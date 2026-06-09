@@ -223,9 +223,9 @@
       <div class="custom-control custom-checkbox">
         <input type="checkbox" class="custom-control-input"
                name="incluir_festivo" id="incluir_festivo_p" value="1"
-               aria-label="Incluir festivos colombianos en las fechas de cuota">
+               aria-label="Incluir festivos argentinos en las fechas de cuota">
         <label class="custom-control-label" for="incluir_festivo_p">
-          Incluir festivos colombianos
+          Incluir festivos argentinos
           <small class="text-muted d-block">Si está desmarcado, las cuotas en festivo pasan al día siguiente</small>
         </label>
       </div>

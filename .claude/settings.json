@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(php artisan *)",
-      "Bash(php -l /home/u359728731/domains/manteliviano.com/coll_system/app/Http/Controllers/Admin/V2/GpsController.php)"
+      "Bash(php -l /home/u359728731/domains/manteliviano.com/coll_system/app/Http/Controllers/Admin/V2/GpsController.php)",
+      "Bash(xargs cat)",
+      "Bash(php -l /home/u359728731/domains/manteliviano.com/coll_system/app/Http/Controllers/Admin/V2/PrestamoController.php)",
+      "Bash(php -l /home/u359728731/domains/manteliviano.com/coll_system/app/Http/Controllers/Admin/V2/PagoController.php)",
+      "Bash(php -l /home/u359728731/domains/manteliviano.com/coll_system/app/Http/Controllers/Admin/V2/FestivoController.php)"
     ]
   }
 }

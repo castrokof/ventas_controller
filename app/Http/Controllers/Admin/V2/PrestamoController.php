@@ -32,6 +32,18 @@ use Illuminate\Support\Facades\Validator;
  */
 class PrestamoController extends Controller
 {
+    /** Cache de festivos_extra para el request actual (evita N queries en el loop de cuotas) */
+    private ?array $festivosExtraCache = null;
+
+    private function getFestivosExtra(): array
+    {
+        if ($this->festivosExtraCache === null) {
+            $this->festivosExtraCache = DB::table('festivos_extra')
+                ->pluck('fecha')
+                ->toArray();
+        }
+        return $this->festivosExtraCache;
+    }
     // ─── Mensajes de validación en español ──────────────────────────────────
     private const MESSAGES = [
         'monto.required'        => 'El monto es obligatorio.',
@@ -594,9 +606,12 @@ class PrestamoController extends Controller
             }
         }
 
-        // ── 2. Feriados trasladables (Decreto 1584/2010) ─────────────────────
-        //    Mar/Mié → lunes anterior | Jue/Vie/Sáb → lunes siguiente
+        // ── 2. Feriados trasladables (Ley 27.399 / Decreto 1584/2010) ────────
+        //    Mar/Mié → lunes anterior
+        //    Jue/Vie/Sáb/Dom → lunes siguiente
+        //    Lun → se queda en lunes
         $trasladables = [
+            [6,  17],  // Paso a la Inmortalidad del Gral. Martín Miguel de Güemes
             [6,  20],  // Paso a la Inmortalidad del Gral. Manuel Belgrano
             [8,  17],  // Paso a la Inmortalidad del Gral. José de San Martín
             [10, 12],  // Día del Respeto a la Diversidad Cultural
@@ -608,9 +623,10 @@ class PrestamoController extends Controller
             $dow  = $base->dayOfWeek;
             if ($dow === Carbon::TUESDAY || $dow === Carbon::WEDNESDAY) {
                 $festivo = $base->copy()->previous(Carbon::MONDAY);
-            } elseif ($dow === Carbon::THURSDAY || $dow === Carbon::FRIDAY || $dow === Carbon::SATURDAY) {
+            } elseif (in_array($dow, [Carbon::THURSDAY, Carbon::FRIDAY, Carbon::SATURDAY, Carbon::SUNDAY])) {
                 $festivo = $base->copy()->next(Carbon::MONDAY);
             } else {
+                // Lunes: ya es el feriado
                 $festivo = $base->copy();
             }
             if ($date->isSameDay($festivo)) {
@@ -618,15 +634,23 @@ class PrestamoController extends Controller
             }
         }
 
-        // ── 3 & 4. Carnaval y Semana Santa (basados en Pascua) ──────────────
+        // ── 3 & 4. Semana Santa y Carnaval (basados en Pascua) ──────────────
         $easter = Carbon::create($year, 3, 21)->addDays(easter_days($year));
 
-        // Carnaval: Lunes y Martes previos (48 y 47 días antes de Pascua)
+        // Carnaval: Lunes y Martes (48 y 47 días antes de Pascua)
         if ($date->isSameDay($easter->copy()->subDays(48))) return true;
         if ($date->isSameDay($easter->copy()->subDays(47))) return true;
 
+        // Jueves Santo (día no laborable optativo — Ley 24.455)
+        if ($date->isSameDay($easter->copy()->subDays(3))) return true;
+
         // Viernes Santo
         if ($date->isSameDay($easter->copy()->subDays(2))) return true;
+
+        // ── 5. Puentes turísticos y festivos extra (cargados desde la BD) ───
+        if (in_array($date->toDateString(), $this->getFestivosExtra())) {
+            return true;
+        }
 
         return false;
     }

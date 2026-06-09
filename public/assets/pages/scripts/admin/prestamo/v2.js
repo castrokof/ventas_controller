@@ -41,6 +41,9 @@ const idioma = {
 /* ── Estado de la tabla ─────────────────────────────────────────────────── */
 let tablaIniciada = false;
 
+/* Saldo pendiente del préstamo que se está refinanciando (0 cuando no hay modal abierto) */
+let refiPendiente = 0;
+
 /* ── Cálculo de montos ──────────────────────────────────────────────────── */
 /**
  * Recalcula monto_total y valor_cuota según el tipo de pago.
@@ -74,6 +77,19 @@ function calcularMontos() {
     $('#monto_total_p').val(total);
     $('#monto_pendiente_p').val(total);
     $('#valor_cuota_p').val(valorCuota);
+
+    // Actualizar "dinero a entregar" en modal de refinanciamiento
+    if (refiPendiente > 0) {
+        const entrega = monto - refiPendiente;
+        $('#refi_entrega_label').text('$' + Math.round(entrega).toLocaleString('es-CO'));
+        if (entrega > 0) {
+            $('#refi-entrega-row').show().removeClass('alert-warning').addClass('alert-success');
+        } else if (entrega < 0) {
+            $('#refi-entrega-row').show().removeClass('alert-success').addClass('alert-warning');
+        } else {
+            $('#refi-entrega-row').hide();
+        }
+    }
 }
 
 /* ── Inicializar DataTable ──────────────────────────────────────────────── */
@@ -166,6 +182,7 @@ $(function () {
 
     // ── Abrir modal crear ────────────────────────────────────────────────────
     $('#btn-crear-prestamo').on('click', function () {
+        refiPendiente = 0; // asegurar que calcularMontos no toque el bloque de entrega
         $('#form-crear-prestamo')[0].reset();
         $('#form-result-crear').html('');
         $('#monto_total_p, #valor_cuota_p, #monto_pendiente_p').val('');
@@ -308,24 +325,34 @@ $(function () {
         const id = $(this).data('id');
         $('#form-refinanciar')[0].reset();
         $('#form-result-refi').html('');
+        $('#refi-entrega-row').hide();
+        refiPendiente = 0;
         $.get(window.V2_BASE_URL + '/prestamo/' + id + '/refinanciar', function (data) {
             if (!data.result || !data.result.length) {
                 Swal.fire('Error', 'No se pudo cargar el préstamo.', 'error');
                 return;
             }
-            const r = data.result[0];
+            const r             = data.result[0];
+            const cuotasRestantes = data.result.length; // cuotas pendientes/atrasadas
+            refiPendiente       = parseFloat(r.monto_pendiente) || 0;
+
             $('#refi-idp').text('#' + r.idp);
             $('#refi_prestamo_id').val(r.idp);
             $('#refi_numero_cuota').val(r.d_numero_cuota);
             $('#refi_valor_cuota').val(r.valor_cuota);
             $('#refi_fecha_pago').val(new Date().toISOString().split('T')[0]);
             $('#refi_usuario_id').val(r.usuario_id);
-            $('#refi_saldo_label').text('$' + parseFloat(r.monto_pendiente).toLocaleString('es-CO'));
+            $('#refi_saldo_label').text('$' + refiPendiente.toLocaleString('es-CO'));
+            // Pre-llenar valor abono con el saldo total para cerrar el préstamo
+            $('#refi_valor_abono').val(refiPendiente);
             // Pre-llenar campos del nuevo préstamo
             $('#cliente_id_p').val(r.cliente_id).trigger('change');
             $('#tipo_pago_p').val(r.tipo_pago).trigger('change');
+            $('#cuotas_p').val(cuotasRestantes);
             $('#interes_p').val(r.interes);
             $('#usuario_id_p').val(r.usuario_id).trigger('change');
+            // Recalcular totales si ya hay monto (ej. al reabrir el modal)
+            calcularMontos();
             $('#modal-refinanciar').modal('show');
         }).fail(function () {
             Swal.fire('Error', 'No se pudo cargar el préstamo.', 'error');

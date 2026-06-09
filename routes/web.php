@@ -305,6 +305,13 @@ Route::prefix('admin/v2')
     /* El cobrador puede registrar su propia posición (sin restricción de rol) */
     Route::post('gps/registrar', 'GpsController@registrar')->name('gps.registrar');
 
+    /* ── Festivos extra (puentes turísticos) — solo admin y empresa ── */
+    Route::middleware('soloEmpresaAdmin')->group(function () {
+        Route::get(   'festivos',      'FestivoController@index')  ->name('festivos.index');
+        Route::post(  'festivos',      'FestivoController@store')  ->name('festivos.store');
+        Route::delete('festivos/{id}', 'FestivoController@destroy')->name('festivos.destroy');
+    });
+
 });
 
 Route::group(['middleware' => ['auth','superEditor']], function () {
