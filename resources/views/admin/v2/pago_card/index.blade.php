@@ -171,6 +171,9 @@ window.CAL_BASE = '{{ url("admin/v2/pago-card") }}';
 $(function () {
     var BASE_PRESTAMO = (window.CAL_BASE || '/admin/v2/pago-card').replace(/\/pago-card$/, '/prestamo');
 
+    /* Cuotas equivalentes a 1 mes según el tipo de pago (la tasa de interés es mensual) */
+    var CUOTAS_POR_MES = { Diario: 24, Semanal: 4, Quincenal: 2, Mensual: 1 };
+
     function recalcularPrestamo() {
         var monto   = parseFloat($('#montop').val())   || 0;
         var cuotas  = parseInt($('#cuotas').val(), 10) || 0;
@@ -180,9 +183,8 @@ $(function () {
             $('#monto_totalp, #valor_cuotap, #monto_pendientep').val('');
             return;
         }
-        var total = (tipo === 'Mensual')
-            ? monto + (monto * (interes / 100) * cuotas)
-            : monto + (monto * (interes / 100));
+        var meses = cuotas / (CUOTAS_POR_MES[tipo] || 1);
+        var total = monto + (monto * (interes / 100) * meses);
         total = Math.round(total);
         $('#monto_totalp').val(total);
         $('#valor_cuotap').val(Math.round(total / cuotas));

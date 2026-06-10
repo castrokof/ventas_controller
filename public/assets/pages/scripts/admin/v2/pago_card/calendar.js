@@ -801,6 +801,9 @@ $(function () {
      * CREAR PRÉSTAMO — cálculo automático + submit
      * ════════════════════════════════════════════════════════════════════════ */
 
+    /* Cuotas equivalentes a 1 mes según el tipo de pago (la tasa de interés es mensual) */
+    var CUOTAS_POR_MES = { Diario: 24, Semanal: 4, Quincenal: 2, Mensual: 1 };
+
     function recalcularPrestamo() {
         var monto  = parseFloat($('#montop').val())       || 0;
         var cuotas = parseInt($('#cuotas').val(), 10)     || 0;
@@ -814,14 +817,9 @@ $(function () {
             return;
         }
 
-        var total;
-        // Mensual: el interés se aplica por cada cuota (monto × interes% × nCuotas)
-        // Diario / Semanal / Quincenal: el interés se aplica una sola vez sobre el monto
-        if (tipo === 'Mensual') {
-            total = monto + (monto * (interes / 100) * cuotas);
-        } else {
-            total = monto + (monto * (interes / 100));
-        }
+        // El interés es mensual: se prorratea según cuántas cuotas equivalen a un mes.
+        var meses = cuotas / (CUOTAS_POR_MES[tipo] || 1);
+        var total = monto + (monto * (interes / 100) * meses);
 
         total = Math.round(total);
         var valorCuota = Math.round(total / cuotas);
