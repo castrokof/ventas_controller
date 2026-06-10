@@ -213,6 +213,52 @@ $(function () {
         });
     });
 
+    /* ── Modal: Crear cliente ─────────────────────────────────────── */
+    $('#modal-u-cli').off('show.bs.modal').on('show.bs.modal', function () {
+        $('#form-cli')[0].reset();
+        $('#modal-u-cli .select2bs4').val(null).trigger('change');
+    });
+
+    $('#modal-u-cli').off('shown.bs.modal').on('shown.bs.modal', function () {
+        $('#modal-u-cli .select2bs4').not('.select2-hidden-accessible').select2({
+            theme:          'bootstrap4',
+            dropdownParent: $('#modal-u-cli'),
+        });
+    });
+
+    $('#form-cli').off('submit').on('submit', function (e) {
+        e.preventDefault();
+        var $btn = $(this).find('[type=submit]').prop('disabled', true)
+                    .html('<i class="fas fa-spinner fa-spin mr-1"></i>Guardando...');
+        $.ajax({
+            url:      '{{ route("admin.v2.cliente.guardar") }}',
+            method:   'POST',
+            dataType: 'json',
+            data:     $(this).serialize(),
+            success: function (data) {
+                $btn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i>Guardar cliente');
+                if (data.errors) {
+                    var h = '<div class="alert alert-danger py-2"><ul class="mb-0">';
+                    $.each(data.errors, function (i, err) { h += '<li>' + err + '</li>'; });
+                    Swal.fire({ icon: 'error', title: 'Revisa los datos', html: h + '</ul></div>' });
+                    return;
+                }
+                $('#modal-u-cli').modal('hide');
+                /* Agregar y seleccionar el nuevo cliente en el select del modal de préstamo */
+                var $sel = $('#cliente_id');
+                if ($sel.length) {
+                    var texto = data.documento + ' → ' + data.nombres + ' ' + data.apellidos;
+                    $sel.append(new Option(texto, data.id, true, true)).trigger('change');
+                }
+                Swal.fire({ icon: 'success', title: 'Cliente creado', showConfirmButton: false, timer: 1800 });
+            },
+            error: function () {
+                $btn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i>Guardar cliente');
+                Swal.fire({ icon: 'error', title: 'Error al guardar', text: 'Intenta de nuevo.' });
+            }
+        });
+    });
+
     $('#form-prestamo').off('submit').on('submit', function (e) {
         e.preventDefault();
         var monto  = parseFloat($('#montop').val())   || 0;

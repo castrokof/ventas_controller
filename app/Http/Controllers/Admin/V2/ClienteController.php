@@ -125,15 +125,33 @@ class ClienteController extends Controller
      */
     public function guardar(Request $request): JsonResponse
     {
-        $error = Validator::make($request->all(), $this->rules());
+        $data = $request->all();
+
+        if (empty($data['usuario_id'])) {
+            $data['usuario_id'] = (int) session('usuario_id');
+        }
+        if (!isset($data['activo']) || $data['activo'] === '') {
+            $data['activo'] = 1;
+        }
+        if (empty($data['consecutivo'])) {
+            $data['consecutivo'] = (int) Cliente::where('usuario_id', $data['usuario_id'])->max('consecutivo') + 1;
+        }
+
+        $error = Validator::make($data, $this->rules());
 
         if ($error->fails()) {
             return response()->json(['errors' => $error->errors()->all()]);
         }
 
-        Cliente::create($request->all());
+        $cliente = Cliente::create($data);
 
-        return response()->json(['success' => 'ok']);
+        return response()->json([
+            'success'   => 'ok',
+            'id'        => $cliente->id,
+            'documento' => $cliente->documento,
+            'nombres'   => $cliente->nombres,
+            'apellidos' => $cliente->apellidos,
+        ]);
     }
 
     /**
