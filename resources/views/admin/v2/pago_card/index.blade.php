@@ -12,6 +12,7 @@
 @section('styles')
 <link href="{{ asset("assets/css/select2-bootstrap.min.css") }}" rel="stylesheet">
 <link href="{{ asset("assets/css/select2.min.css") }}" rel="stylesheet">
+<link href="{{ asset("assets/css/ios-form.css") }}" rel="stylesheet">
 @include('admin.v2._partials.mobile-styles')
 <style>
 /* ── Barra de fecha ────────────────────────────────────── */
@@ -656,7 +657,7 @@ $(function () {
 {{-- ════════════════════════════════════════════════════════ --}}
 {{-- MODAL: Crear cliente                                    --}}
 {{-- ════════════════════════════════════════════════════════ --}}
-<div class="modal fade" id="modal-u-cli" tabindex="-1"
+<div class="modal fade ios-form" id="modal-u-cli" tabindex="-1"
      role="dialog" aria-labelledby="modal-cli-titulo" aria-modal="true"
      style="overflow-y:scroll">
   <div class="modal-dialog modal-xl" role="document">
@@ -690,7 +691,7 @@ $(function () {
 {{-- ════════════════════════════════════════════════════════ --}}
 {{-- MODAL: Crear préstamo                                   --}}
 {{-- ════════════════════════════════════════════════════════ --}}
-<div class="modal fade" id="modal-pc" tabindex="-1"
+<div class="modal fade ios-form" id="modal-pc" tabindex="-1"
      role="dialog" aria-labelledby="modal-pc-titulo" aria-modal="true"
      style="overflow-y:scroll">
   <div class="modal-dialog modal-xl" role="document">
