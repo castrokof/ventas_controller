@@ -179,11 +179,12 @@ $(function () {
         var cuotas  = parseInt($('#cuotas').val(), 10) || 0;
         var interes = parseFloat($('#interes').val())  || 0;
         var tipo    = $('#tipo_pagop').val();
+        var prorratear = $('#interes_prorrateado').is(':checked');
         if (!monto || !cuotas) {
             $('#monto_totalp, #valor_cuotap, #monto_pendientep').val('');
             return;
         }
-        var meses = cuotas / (CUOTAS_POR_MES[tipo] || 1);
+        var meses = (tipo === 'Mensual' || prorratear) ? cuotas / (CUOTAS_POR_MES[tipo] || 1) : 1;
         var total = monto + (monto * (interes / 100) * meses);
         total = Math.round(total);
         $('#monto_totalp').val(total);
@@ -192,8 +193,8 @@ $(function () {
     }
 
     /* Reemplazar handlers de calendar.js (si quedaron de caché vieja) con versión inline */
-    $(document).off('input change', '#montop, #cuotas, #interes, #tipo_pagop');
-    $(document).on('input change',  '#montop, #cuotas, #interes, #tipo_pagop', recalcularPrestamo);
+    $(document).off('input change', '#montop, #cuotas, #interes, #tipo_pagop, #interes_prorrateado');
+    $(document).on('input change',  '#montop, #cuotas, #interes, #tipo_pagop, #interes_prorrateado', recalcularPrestamo);
 
     $('#modal-pc').off('show.bs.modal').on('show.bs.modal', function () {
         $('#form-prestamo')[0].reset();

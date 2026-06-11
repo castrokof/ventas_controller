@@ -182,11 +182,23 @@
           Cobrar feriados argentinos
         </label>
       </div>
+      <div class="custom-control custom-switch">
+        <input type="checkbox" class="custom-control-input"
+               id="interes_prorrateado" value="1">
+        <label class="custom-control-label" for="interes_prorrateado">
+          Prorratear interés mensual según frecuencia
+        </label>
+      </div>
     </div>
     <small class="text-muted mt-1 d-block">
       <i class="fas fa-info-circle mr-1" aria-hidden="true"></i>
       Por defecto se saltan domingos y feriados nacionales (Argentina).
       Actívalos solo si el acuerdo lo requiere.
+    </small>
+    <small class="text-muted d-block">
+      <i class="fas fa-info-circle mr-1" aria-hidden="true"></i>
+      La tasa de interés es mensual. Si activas el prorrateo, 6 cuotas quincenales
+      o 12 semanales equivaldrán a 3 cuotas mensuales (mismo interés total).
     </small>
   </div>
 </div>

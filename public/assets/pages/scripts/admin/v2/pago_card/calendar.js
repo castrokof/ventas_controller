@@ -809,6 +809,7 @@ $(function () {
         var cuotas = parseInt($('#cuotas').val(), 10)     || 0;
         var interes= parseFloat($('#interes').val())      || 0;
         var tipo   = $('#tipo_pagop').val();
+        var prorratear = $('#interes_prorrateado').is(':checked');
 
         if (!monto || !cuotas) {
             $('#monto_totalp').val('');
@@ -817,8 +818,9 @@ $(function () {
             return;
         }
 
-        // El interés es mensual: se prorratea según cuántas cuotas equivalen a un mes.
-        var meses = cuotas / (CUOTAS_POR_MES[tipo] || 1);
+        // El interés es mensual. Para Mensual siempre se aplica por cada cuota.
+        // Para los demás tipos, solo se prorratea si se activa la opción.
+        var meses = (tipo === 'Mensual' || prorratear) ? cuotas / (CUOTAS_POR_MES[tipo] || 1) : 1;
         var total = monto + (monto * (interes / 100) * meses);
 
         total = Math.round(total);
@@ -829,7 +831,7 @@ $(function () {
         $('#monto_pendientep').val(total);
     }
 
-    $(document).on('input change', '#montop, #cuotas, #interes, #tipo_pagop', recalcularPrestamo);
+    $(document).on('input change', '#montop, #cuotas, #interes, #tipo_pagop, #interes_prorrateado', recalcularPrestamo);
 
     /* Limpiar cálculo al abrir el modal de nuevo préstamo */
     $('#modal-pc').on('show.bs.modal', function () {
