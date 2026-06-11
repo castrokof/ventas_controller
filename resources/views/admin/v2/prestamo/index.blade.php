@@ -388,5 +388,5 @@
     window.V2_REFI_URL      = "{{ route('admin.v2.prestamo.refiguardar') }}";
     window.V2_CSRF          = "{{ csrf_token() }}";
 </script>
-<script src="{{asset("assets/pages/scripts/admin/prestamo/v2.js")}}"></script>
+<script src="{{ asset('assets/pages/scripts/admin/prestamo/v2.js') }}?v={{ filemtime(public_path('assets/pages/scripts/admin/prestamo/v2.js')) }}"></script>
 @endsection

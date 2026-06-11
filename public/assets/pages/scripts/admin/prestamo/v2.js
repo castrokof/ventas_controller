@@ -45,32 +45,35 @@ let tablaIniciada = false;
 let refiPendiente = 0;
 
 /* ── Cálculo de montos ──────────────────────────────────────────────────── */
+/* Cuotas equivalentes a 1 mes según el tipo de pago (la tasa de interés es mensual) */
+const CUOTAS_POR_MES = { Diario: 24, Semanal: 4, Quincenal: 2, Mensual: 1 };
+
 /**
  * Recalcula monto_total y valor_cuota según el tipo de pago.
  *
- * Fórmulas (preservadas del original):
- *   Diario / Semanal / Quincenal:
- *     total = monto + monto * (interes/100)           → interés fijo (× 1)
- *   Mensual:
- *     total = monto + monto * (interes/100) * cuotas  → interés acumulado
+ * Por defecto:
+ *   Mensual: el interés (mensual) se aplica por cada cuota.
+ *   Diario / Semanal / Quincenal: el interés se aplica una sola vez.
+ *
+ * Si se activa "Prorratear interés mensual según frecuencia"
+ * (#interes_prorrateado_p), la tasa mensual se reparte según cuántas
+ * cuotas del tipo seleccionado equivalen a un mes:
+ *     total = monto + monto * (interes/100) * (cuotas / cuotasPorMes)
+ *
+ * Esto hace que, para una misma tasa, 3 cuotas mensuales, 6 quincenales
+ * y 12 semanales (todas equivalentes a 3 meses) den el mismo total.
  */
 function calcularMontos() {
     const monto    = parseFloat($('#monto_p').val())    || 0;
     const cuotas   = parseInt($('#cuotas_p').val())     || 0;
     const interes  = parseFloat($('#interes_p').val())  || 0;
     const tipoPago = $('#tipo_pago_p').val();
+    const prorratear = $('#interes_prorrateado_p').is(':checked');
 
     if (!monto || !cuotas || !tipoPago) return;
 
-    let total;
-
-    if (tipoPago === 'Mensual') {
-        // Interés compuesto por número de cuotas
-        total = monto + monto * (interes / 100) * cuotas;
-    } else {
-        // Diario / Semanal / Quincenal: interés plano
-        total = Math.round(monto + monto * (interes / 100));
-    }
+    const meses = (tipoPago === 'Mensual' || prorratear) ? cuotas / (CUOTAS_POR_MES[tipoPago] || 1) : 1;
+    const total = Math.round(monto + monto * (interes / 100) * meses);
 
     const valorCuota = Math.round(total / cuotas);
 
@@ -178,7 +181,7 @@ $(function () {
     iniciarTabla();
 
     // ── Recalcular montos en cada cambio de inputs ───────────────────────────
-    $('#monto_p, #cuotas_p, #interes_p, #tipo_pago_p').on('change input', calcularMontos);
+    $('#monto_p, #cuotas_p, #interes_p, #tipo_pago_p, #interes_prorrateado_p').on('change input', calcularMontos);
 
     // ── Abrir modal crear ────────────────────────────────────────────────────
     $('#btn-crear-prestamo').on('click', function () {

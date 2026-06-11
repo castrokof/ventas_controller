@@ -47,6 +47,7 @@
 .filter-btn.fb-pend.active     { background:#fd7e14; }
 .filter-btn.fb-atra.active     { background:#dc3545; }
 .filter-btn.fb-pago.active     { background:#198754; }
+.filter-btn.fb-hoy.active       { background:#0d6efd; }
 
 /* ── Cuota card ────────────────────────────────────────── */
 .cuota-card {
@@ -171,18 +172,21 @@ window.CAL_BASE = '{{ url("admin/v2/pago-card") }}';
 $(function () {
     var BASE_PRESTAMO = (window.CAL_BASE || '/admin/v2/pago-card').replace(/\/pago-card$/, '/prestamo');
 
+    /* Cuotas equivalentes a 1 mes según el tipo de pago (la tasa de interés es mensual) */
+    var CUOTAS_POR_MES = { Diario: 24, Semanal: 4, Quincenal: 2, Mensual: 1 };
+
     function recalcularPrestamo() {
         var monto   = parseFloat($('#montop').val())   || 0;
         var cuotas  = parseInt($('#cuotas').val(), 10) || 0;
         var interes = parseFloat($('#interes').val())  || 0;
         var tipo    = $('#tipo_pagop').val();
+        var prorratear = $('#interes_prorrateado').is(':checked');
         if (!monto || !cuotas) {
             $('#monto_totalp, #valor_cuotap, #monto_pendientep').val('');
             return;
         }
-        var total = (tipo === 'Mensual')
-            ? monto + (monto * (interes / 100) * cuotas)
-            : monto + (monto * (interes / 100));
+        var meses = (tipo === 'Mensual' || prorratear) ? cuotas / (CUOTAS_POR_MES[tipo] || 1) : 1;
+        var total = monto + (monto * (interes / 100) * meses);
         total = Math.round(total);
         $('#monto_totalp').val(total);
         $('#valor_cuotap').val(Math.round(total / cuotas));
@@ -190,8 +194,8 @@ $(function () {
     }
 
     /* Reemplazar handlers de calendar.js (si quedaron de caché vieja) con versión inline */
-    $(document).off('input change', '#montop, #cuotas, #interes, #tipo_pagop');
-    $(document).on('input change',  '#montop, #cuotas, #interes, #tipo_pagop', recalcularPrestamo);
+    $(document).off('input change', '#montop, #cuotas, #interes, #tipo_pagop, #interes_prorrateado');
+    $(document).on('input change',  '#montop, #cuotas, #interes, #tipo_pagop, #interes_prorrateado', recalcularPrestamo);
 
     $('#modal-pc').off('show.bs.modal').on('show.bs.modal', function () {
         $('#form-prestamo')[0].reset();
@@ -200,8 +204,8 @@ $(function () {
         /* Resetear valores de select2 al abrir */
         $('#modal-pc .select2bs4').val(null).trigger('change');
         /* Restaurar usuario (es el propio usuario logueado, no lo selecciona el operador) */
-        const $usr = $('#usuario_idp');
-        $usr.val($usr.find('option[value!=""]').first().val()).trigger('change');
+        const $usrDisplay = $('#usuario_idp_display');
+        $usrDisplay.val($usrDisplay.find('option[value!=""]').first().val()).trigger('change');
     });
 
     /* Inicializar select2 cuando el modal ya es visible (necesario para dropdownParent) */
@@ -210,6 +214,52 @@ $(function () {
         $('#modal-pc .select2bs4').not('.select2-hidden-accessible').select2({
             theme:          'bootstrap4',
             dropdownParent: $('#modal-pc'),
+        });
+    });
+
+    /* ── Modal: Crear cliente ─────────────────────────────────────── */
+    $('#modal-u-cli').off('show.bs.modal').on('show.bs.modal', function () {
+        $('#form-cli')[0].reset();
+        $('#modal-u-cli .select2bs4').val(null).trigger('change');
+    });
+
+    $('#modal-u-cli').off('shown.bs.modal').on('shown.bs.modal', function () {
+        $('#modal-u-cli .select2bs4').not('.select2-hidden-accessible').select2({
+            theme:          'bootstrap4',
+            dropdownParent: $('#modal-u-cli'),
+        });
+    });
+
+    $('#form-cli').off('submit').on('submit', function (e) {
+        e.preventDefault();
+        var $btn = $(this).find('[type=submit]').prop('disabled', true)
+                    .html('<i class="fas fa-spinner fa-spin mr-1"></i>Guardando...');
+        $.ajax({
+            url:      '{{ route("admin.v2.cliente.guardar") }}',
+            method:   'POST',
+            dataType: 'json',
+            data:     $(this).serialize(),
+            success: function (data) {
+                $btn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i>Guardar cliente');
+                if (data.errors) {
+                    var h = '<div class="alert alert-danger py-2"><ul class="mb-0">';
+                    $.each(data.errors, function (i, err) { h += '<li>' + err + '</li>'; });
+                    Swal.fire({ icon: 'error', title: 'Revisa los datos', html: h + '</ul></div>' });
+                    return;
+                }
+                $('#modal-u-cli').modal('hide');
+                /* Agregar y seleccionar el nuevo cliente en el select del modal de préstamo */
+                var $sel = $('#cliente_id');
+                if ($sel.length) {
+                    var texto = data.documento + ' → ' + data.nombres + ' ' + data.apellidos;
+                    $sel.append(new Option(texto, data.id, true, true)).trigger('change');
+                }
+                Swal.fire({ icon: 'success', title: 'Cliente creado', showConfirmButton: false, timer: 1800 });
+            },
+            error: function () {
+                $btn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i>Guardar cliente');
+                Swal.fire({ icon: 'error', title: 'Error al guardar', text: 'Intenta de nuevo.' });
+            }
         });
     });
 
@@ -417,6 +467,9 @@ $(function () {
 
 <div class="panel-filters">
   <button class="filter-btn fb-all active" data-filter="all">Todos</button>
+  <button class="filter-btn fb-hoy"         data-filter="HOY">
+    <i class="fas fa-calendar-day mr-1"></i>Pendiente hoy
+  </button>
   <button class="filter-btn fb-pend"        data-filter="C">Pendiente</button>
   <button class="filter-btn fb-atra"        data-filter="A">Atrasada</button>
   <button class="filter-btn fb-pago"        data-filter="P">Pagada</button>
@@ -820,37 +873,5 @@ $(function () {
     </button>
   </div>
 </div>
-
-{{-- ════════════════════════════════════════════════════════ --}}
-{{-- GPS Tracker — envía posición cada 3 min en background   --}}
-{{-- ════════════════════════════════════════════════════════ --}}
-<script>
-(function () {
-    var GPS_BASE      = '{{ url("admin/v2/gps") }}';
-    var GPS_TOKEN     = '{{ csrf_token() }}';
-    var lastSent      = 0;
-    var INTERVALO_MS  = 3 * 60 * 1000; // 3 minutos
-
-    if (!navigator.geolocation) return;
-
-    navigator.geolocation.watchPosition(
-        function (pos) {
-            var ahora = Date.now();
-            if (ahora - lastSent < INTERVALO_MS) return;
-            lastSent = ahora;
-
-            $.post(GPS_BASE + '/registrar', {
-                _token:    GPS_TOKEN,
-                latitud:   pos.coords.latitude,
-                longitud:  pos.coords.longitude,
-                precision: pos.coords.accuracy,
-                velocidad: pos.coords.speed ? (pos.coords.speed * 3.6).toFixed(1) : '',
-            });
-        },
-        function () { /* silencioso si GPS no disponible */ },
-        { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
-    );
-})();
-</script>
 
 @endsection

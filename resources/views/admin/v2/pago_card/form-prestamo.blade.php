@@ -35,7 +35,7 @@
       <input type="number" name="monto" id="montop"
              class="form-control"
              value="{{ old('monto', $data->monto ?? '') }}"
-             required aria-required="true"
+             min="1" required aria-required="true"
              aria-label="Monto del préstamo"
              placeholder="0">
     </div>
@@ -64,10 +64,10 @@
       <i class="fas fa-list-ol fa-xs mr-1 text-muted" aria-hidden="true"></i>
       Cuotas <span class="text-danger" aria-hidden="true">*</span>
     </label>
-    <input type="text" name="cuotas" id="cuotas"
+    <input type="number" name="cuotas" id="cuotas"
            class="form-control form-control-sm"
            value="{{ old('cuotas', $data->cuotas ?? '') }}"
-           required aria-required="true"
+           min="1" step="1" required aria-required="true"
            aria-label="Número de cuotas"
            placeholder="Ej. 30">
   </div>
@@ -78,10 +78,10 @@
       Interés <span class="text-danger" aria-hidden="true">*</span>
     </label>
     <div class="input-group input-group-sm">
-      <input type="text" name="interes" id="interes"
+      <input type="number" name="interes" id="interes"
              class="form-control"
              value="{{ old('interes', $data->interes ?? '') }}"
-             required aria-required="true"
+             min="0" step="any" required aria-required="true"
              aria-label="Porcentaje de interés"
              placeholder="Ej. 20">
       <div class="input-group-append">
@@ -146,21 +146,39 @@
       <i class="fas fa-user-tie fa-xs mr-1 text-muted" aria-hidden="true"></i>
       Usuario <span class="text-danger" aria-hidden="true">*</span>
     </label>
-    <select name="usuario_id" id="usuario_idp"
+    <select id="usuario_idp_display"
             class="form-control form-control-sm select2bs4"
             style="width:100%"
-            readonly required aria-required="true"
+            disabled aria-required="true"
             aria-label="Usuario responsable del préstamo">
       <option value="">— Seleccione el usuario —</option>
       @foreach ($usuarioscp as $id => $usuario)
         <option value="{{ $id }}" selected>{{ $usuario }}</option>
       @endforeach
     </select>
+    <input type="hidden" name="usuario_id" id="usuario_idp"
+           value="{{ old('usuario_id', array_key_first($usuarioscp ?? []) ?? '') }}">
   </div>
 
 </div>
 
-{{-- ── Fila 3: opciones de calendario ─────────────────────────── --}}
+{{-- ── Fila 3: observación ──────────────────────────────────── --}}
+<div class="form-group row">
+  <div class="col-12">
+    <label for="observacion_prestamop" class="font-weight-bold">
+      <i class="fas fa-comment-alt fa-xs mr-1 text-muted" aria-hidden="true"></i>
+      Observación
+    </label>
+    <textarea name="observacion_prestamo" id="observacion_prestamop"
+              class="form-control form-control-sm"
+              rows="2"
+              placeholder="Observación opcional del préstamo..."
+              aria-label="Observación del préstamo"
+              maxlength="100">{{ old('observacion_prestamo', $data->observacion_prestamo ?? '') }}</textarea>
+  </div>
+</div>
+
+{{-- ── Fila 4: opciones de calendario ───────────────────────── --}}
 <div class="form-group row">
   <div class="col-12">
     <label class="font-weight-bold d-block mb-1">
@@ -182,11 +200,23 @@
           Cobrar feriados argentinos
         </label>
       </div>
+      <div class="custom-control custom-switch">
+        <input type="checkbox" class="custom-control-input"
+               id="interes_prorrateado" value="1">
+        <label class="custom-control-label" for="interes_prorrateado">
+          Prorratear interés mensual según frecuencia
+        </label>
+      </div>
     </div>
     <small class="text-muted mt-1 d-block">
       <i class="fas fa-info-circle mr-1" aria-hidden="true"></i>
       Por defecto se saltan domingos y feriados nacionales (Argentina).
       Actívalos solo si el acuerdo lo requiere.
+    </small>
+    <small class="text-muted d-block">
+      <i class="fas fa-info-circle mr-1" aria-hidden="true"></i>
+      La tasa de interés es mensual. Si activas el prorrateo, 6 cuotas quincenales
+      o 12 semanales equivaldrán a 3 cuotas mensuales (mismo interés total).
     </small>
   </div>
 </div>

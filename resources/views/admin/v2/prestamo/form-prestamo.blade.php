@@ -220,13 +220,22 @@
         </label>
       </div>
 
-      <div class="custom-control custom-checkbox">
+      <div class="custom-control custom-checkbox mr-4">
         <input type="checkbox" class="custom-control-input"
                name="incluir_festivo" id="incluir_festivo_p" value="1"
                aria-label="Incluir festivos argentinos en las fechas de cuota">
         <label class="custom-control-label" for="incluir_festivo_p">
           Incluir festivos argentinos
           <small class="text-muted d-block">Si está desmarcado, las cuotas en festivo pasan al día siguiente</small>
+        </label>
+      </div>
+
+      <div class="custom-control custom-checkbox">
+        <input type="checkbox" class="custom-control-input"
+               id="interes_prorrateado_p" value="1">
+        <label class="custom-control-label" for="interes_prorrateado_p">
+          Prorratear interés mensual según frecuencia
+          <small class="text-muted d-block">La tasa es mensual: si activas esto, 6 cuotas quincenales o 12 semanales equivalen a 3 mensuales (mismo interés total)</small>
         </label>
       </div>
 

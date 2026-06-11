@@ -164,9 +164,9 @@
     <label for="usuario_id_cli" class="font-weight-bold requerido">
       Usuario <span class="text-danger" aria-hidden="true">*</span>
     </label>
-    <select name="usuario_id" id="usuario_id_cli"
+    <select id="usuario_id_cli_display"
             class="form-control select2bs4" style="width:100%"
-            required aria-required="true" readonly>
+            disabled aria-required="true">
       <option value="">— Seleccione —</option>
       @foreach ($usuarios as $uid => $uname)
         <option value="{{ $uid }}"
@@ -175,6 +175,8 @@
         </option>
       @endforeach
     </select>
+    <input type="hidden" name="usuario_id" id="usuario_id_cli"
+           value="{{ old('usuario_id', isset($datas) && is_object($datas) && isset($datas->usuario_id) ? $datas->usuario_id : (array_key_first($usuarios ?? []) ?? '')) }}">
   </div>
 
   <div class="col-12 col-sm-6 mt-2">

@@ -105,6 +105,49 @@ $id= Session()->get('usuario_id');
 <script src="{{asset("assets/js/jquery-validation/localization/messages_es.min.js")}}"></script>
 <script src="{{asset("assets/js/funciones.js")}}"></script>
 <script src="{{asset("assets/js/scripts.js")}}"></script>
+
+@if($id)
+{{-- ── GPS Tracker — activo en toda la sesión, envía posición cada 3 min ── --}}
+<script>
+(function () {
+    if (!navigator.geolocation) return;
+
+    var GPS_URL      = '{{ route("admin.v2.gps.registrar") }}';
+    var GPS_TOKEN    = '{{ csrf_token() }}';
+    var lastSent     = 0;
+    var INTERVALO_MS = 3 * 60 * 1000; // 3 minutos
+
+    /* Última posición conocida, disponible para otras pantallas (p. ej. registrar pago) */
+    window.__gpsLastPos = null;
+
+    navigator.geolocation.watchPosition(
+        function (pos) {
+            window.__gpsLastPos = {
+                lat:      pos.coords.latitude,
+                lng:      pos.coords.longitude,
+                accuracy: pos.coords.accuracy,
+                ts:       Date.now(),
+            };
+
+            var ahora = Date.now();
+            if (ahora - lastSent < INTERVALO_MS) return;
+            lastSent = ahora;
+
+            $.post(GPS_URL, {
+                _token:    GPS_TOKEN,
+                latitud:   pos.coords.latitude,
+                longitud:  pos.coords.longitude,
+                precision: pos.coords.accuracy,
+                velocidad: pos.coords.speed ? (pos.coords.speed * 3.6).toFixed(1) : '',
+            });
+        },
+        function () { /* silencioso si GPS no disponible o se niega el permiso */ },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
+    );
+})();
+</script>
+@endif
+
 @yield("scripts")
 
 <script src="{{asset("assets/pages/scripts/admin/usuario/crear.js")}}" type="text/javascript"></script>
