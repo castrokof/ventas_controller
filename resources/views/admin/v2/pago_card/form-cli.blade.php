@@ -145,7 +145,7 @@
           <i class="fas fa-mobile-alt"></i>
         </span>
       </div>
-      <input type="text" name="celular" id="celularcli"
+      <input type="tel" name="celular" id="celularcli"
              class="form-control"
              value="{{ old('celular', $data->celular ?? '') }}"
              required aria-required="true"
@@ -164,7 +164,7 @@
           <i class="fas fa-phone"></i>
         </span>
       </div>
-      <input type="text" name="telefono" id="telefonocli"
+      <input type="tel" name="telefono" id="telefonocli"
              class="form-control"
              value="{{ old('telefono', $data->telefono ?? '') }}"
              required aria-required="true"
