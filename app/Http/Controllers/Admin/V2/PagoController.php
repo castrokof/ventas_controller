@@ -40,6 +40,8 @@ class PagoController extends Controller
             'abono'            => '1',
             'sync'             => '1',
             'usuario_id'       => $request->session()->get('usuario_id'),
+            'latitud'          => $request->filled('latitud')  ? $request->latitud  : null,
+            'longitud'         => $request->filled('longitud') ? $request->longitud : null,
         ]);
     }
 

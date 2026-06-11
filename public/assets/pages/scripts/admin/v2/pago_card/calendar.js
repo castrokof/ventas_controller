@@ -51,6 +51,17 @@ let calMonth = parseInt(todayStr.slice(5, 7), 10);
 let calData  = {};
 let selDate  = null;
 
+/* ── Ubicación GPS (capturada al registrar un pago) ──────────────────────────── */
+/* window.__gpsLastPos lo mantiene actualizado el tracker global del layout */
+function gpsParams() {
+    var pos = window.__gpsLastPos;
+    return pos ? { latitud: pos.lat, longitud: pos.lng } : {};
+}
+function gpsQueryString() {
+    var pos = window.__gpsLastPos;
+    return pos ? ('&latitud=' + encodeURIComponent(pos.lat) + '&longitud=' + encodeURIComponent(pos.lng)) : '';
+}
+
 /* ── Selección masiva ───────────────────────────────────────────────────────── */
 var selMasivo    = false;
 var seleccionIds = {};
@@ -115,9 +126,11 @@ function filtrarPanel() {
     var visible = 0;
     $('.cuota-card').each(function () {
         var matchSearch = !q || ($(this).data('search') || '').indexOf(q) >= 0;
+        var estado = $(this).data('estado');
         var matchEstado = filtroEstado === 'all'
-            || $(this).data('estado') === filtroEstado
-            || (filtroEstado === 'P' && $(this).data('estado') === 'T');
+            || estado === filtroEstado
+            || (filtroEstado === 'P' && estado === 'T')
+            || (filtroEstado === 'HOY' && (estado === 'C' || estado === 'A') && $(this).data('fecha') === todayStr);
         var show = matchSearch && matchEstado;
         $(this).toggle(show);
         if (show) visible++;
@@ -472,7 +485,8 @@ $(function () {
             if (!res.value) return;
 
             var data = $(e.target).serialize()
-                     + (modo === 'editar' ? '&_method=PUT' : '');
+                     + (modo === 'editar' ? '&_method=PUT' : '')
+                     + gpsQueryString();
 
             $.ajax({
                 url:      url,
@@ -1382,7 +1396,7 @@ function mcpPagarSeleccionadas() {
             url:      BASE_PC + '/guardar',
             method:   'POST',
             dataType: 'json',
-            data: {
+            data: $.extend({
                 _token:       csrf,
                 prestamo_id:  c.idp,
                 numero_cuota: c.d_numero_cuota,
@@ -1392,7 +1406,7 @@ function mcpPagarSeleccionadas() {
                 fecha_pago:   c.fecha_cuota <= todayStr ? todayStr : c.fecha_cuota,
                 vatraso:      0,
                 observacion_pago: ''
-            },
+            }, gpsParams()),
             success: function (resp) {
                 if (resp.offline_queued) {
                     /* Contado como ok; la barra PWA actualizará el badge */

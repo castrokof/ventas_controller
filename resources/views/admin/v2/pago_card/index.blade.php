@@ -47,6 +47,7 @@
 .filter-btn.fb-pend.active     { background:#fd7e14; }
 .filter-btn.fb-atra.active     { background:#dc3545; }
 .filter-btn.fb-pago.active     { background:#198754; }
+.filter-btn.fb-hoy.active       { background:#0d6efd; }
 
 /* ── Cuota card ────────────────────────────────────────── */
 .cuota-card {
@@ -466,6 +467,9 @@ $(function () {
 
 <div class="panel-filters">
   <button class="filter-btn fb-all active" data-filter="all">Todos</button>
+  <button class="filter-btn fb-hoy"         data-filter="HOY">
+    <i class="fas fa-calendar-day mr-1"></i>Pendiente hoy
+  </button>
   <button class="filter-btn fb-pend"        data-filter="C">Pendiente</button>
   <button class="filter-btn fb-atra"        data-filter="A">Atrasada</button>
   <button class="filter-btn fb-pago"        data-filter="P">Pagada</button>
@@ -869,37 +873,5 @@ $(function () {
     </button>
   </div>
 </div>
-
-{{-- ════════════════════════════════════════════════════════ --}}
-{{-- GPS Tracker — envía posición cada 3 min en background   --}}
-{{-- ════════════════════════════════════════════════════════ --}}
-<script>
-(function () {
-    var GPS_BASE      = '{{ url("admin/v2/gps") }}';
-    var GPS_TOKEN     = '{{ csrf_token() }}';
-    var lastSent      = 0;
-    var INTERVALO_MS  = 3 * 60 * 1000; // 3 minutos
-
-    if (!navigator.geolocation) return;
-
-    navigator.geolocation.watchPosition(
-        function (pos) {
-            var ahora = Date.now();
-            if (ahora - lastSent < INTERVALO_MS) return;
-            lastSent = ahora;
-
-            $.post(GPS_BASE + '/registrar', {
-                _token:    GPS_TOKEN,
-                latitud:   pos.coords.latitude,
-                longitud:  pos.coords.longitude,
-                precision: pos.coords.accuracy,
-                velocidad: pos.coords.speed ? (pos.coords.speed * 3.6).toFixed(1) : '',
-            });
-        },
-        function () { /* silencioso si GPS no disponible */ },
-        { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
-    );
-})();
-</script>
 
 @endsection
