@@ -12,7 +12,7 @@
 @section('styles')
 <link href="{{ asset("assets/css/select2-bootstrap.min.css") }}" rel="stylesheet">
 <link href="{{ asset("assets/css/select2.min.css") }}" rel="stylesheet">
-<link href="{{ asset("assets/css/ios-form.css") }}" rel="stylesheet">
+<link href="{{ asset("assets/css/ios-form.css") }}?v={{ filemtime(public_path('assets/css/ios-form.css')) }}" rel="stylesheet">
 @include('admin.v2._partials.mobile-styles')
 <style>
 /* ── Barra de fecha ────────────────────────────────────── */
@@ -385,7 +385,7 @@ $(function () {
       <i class="fas fa-file-invoice-dollar"></i>
     </button>
     <button id="btn-modo-masivo" class="btn btn-sm btn-outline-warning"
-            title="Cambio masivo de fecha">
+            title="Selección masiva (cambiar fecha / pagar)">
       <i class="fas fa-calendar-check"></i>
     </button>
   </div>
@@ -892,11 +892,17 @@ $(function () {
     <i class="fas fa-check-square mr-1" style="color:#ffc107"></i>
     <span id="sel-count">0</span> cuota(s) seleccionada(s)
   </div>
-  <div class="d-flex" style="gap:8px">
+  <div class="d-flex flex-wrap" style="gap:8px">
+    <button id="btn-sel-todos" class="btn btn-sm btn-outline-light">
+      <i class="fas fa-check-double mr-1"></i>Seleccionar todos
+    </button>
     <button id="btn-sel-limpiar" class="btn btn-sm btn-outline-light">
       <i class="fas fa-times mr-1"></i>Limpiar
     </button>
-    <button id="btn-sel-cambiar" class="btn btn-sm btn-warning font-weight-bold"
+    <button id="btn-sel-pagar" class="btn btn-sm btn-success font-weight-bold" disabled>
+      <i class="fas fa-money-bill-wave mr-1"></i>Pagar
+    </button>
+    <button id="btn-sel-cambiar" class="btn btn-sm btn-warning font-weight-bold" disabled
             style="color:#212529">
       <i class="fas fa-calendar-alt mr-1"></i>Cambiar fecha
     </button>
