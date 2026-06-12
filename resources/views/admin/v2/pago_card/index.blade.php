@@ -12,7 +12,7 @@
 @section('styles')
 <link href="{{ asset("assets/css/select2-bootstrap.min.css") }}" rel="stylesheet">
 <link href="{{ asset("assets/css/select2.min.css") }}" rel="stylesheet">
-<link href="{{ asset("assets/css/ios-form.css") }}" rel="stylesheet">
+<link href="{{ asset("assets/css/ios-form.css") }}?v={{ filemtime(public_path('assets/css/ios-form.css')) }}" rel="stylesheet">
 @include('admin.v2._partials.mobile-styles')
 <style>
 /* ── Barra de fecha ────────────────────────────────────── */

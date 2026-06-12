@@ -1,7 +1,7 @@
 /* public/sw.js — Coll-System V2 PWA Service Worker */
 'use strict';
 
-const CACHE_V  = 'coll-v2-2';
+const CACHE_V  = 'coll-v2-3';
 const OFFLINE  = 'offline.html';
 
 /* ═══ Install ════════════════════════════════════════════════════════════════ */
