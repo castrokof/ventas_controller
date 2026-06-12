@@ -10,6 +10,7 @@
 <link href="{{asset("assets/$theme/plugins/datatables-responsive/css/responsive.bootstrap4.min.css")}}" rel="stylesheet">
 <link href="{{asset("assets/css/select2-bootstrap.min.css")}}" rel="stylesheet">
 <link href="{{asset("assets/css/select2.min.css")}}" rel="stylesheet">
+<link href="{{asset("assets/css/ios-form.css")}}" rel="stylesheet">
 @include('admin.v2._partials.mobile-styles')
 @endsection
 
@@ -145,7 +146,7 @@
 </button>
 
 {{-- ══ Modal ════════════════════════════════════════════════════ --}}
-<div class="modal fade" id="modal-cliente" tabindex="-1" role="dialog"
+<div class="modal fade ios-form" id="modal-cliente" tabindex="-1" role="dialog"
      aria-labelledby="modal-cliente-titulo" aria-modal="true">
   <div class="modal-dialog" role="document">
     <div class="modal-content">

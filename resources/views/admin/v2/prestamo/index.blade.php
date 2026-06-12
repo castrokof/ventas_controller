@@ -10,6 +10,7 @@
 <link href="{{asset("assets/$theme/plugins/datatables-responsive/css/responsive.bootstrap4.min.css")}}" rel="stylesheet">
 <link href="{{asset("assets/css/select2-bootstrap.min.css")}}" rel="stylesheet">
 <link href="{{asset("assets/css/select2.min.css")}}" rel="stylesheet">
+<link href="{{asset("assets/css/ios-form.css")}}" rel="stylesheet">
 @include('admin.v2._partials.mobile-styles')
 <style>
 /* ── Skeleton loader ─────────────────────────────── */
@@ -138,7 +139,7 @@
 {{-- ════════════════════════════════════════════════════ --}}
 {{-- MODAL: Crear préstamo                               --}}
 {{-- ════════════════════════════════════════════════════ --}}
-<div class="modal fade" id="modal-crear-prestamo" tabindex="-1"
+<div class="modal fade ios-form" id="modal-crear-prestamo" tabindex="-1"
      role="dialog" aria-labelledby="modal-crear-titulo" aria-modal="true"
      style="overflow-y:scroll">
   <div class="modal-dialog modal-xl" role="document">
@@ -273,7 +274,7 @@
 {{-- ════════════════════════════════════════════════════ --}}
 {{-- MODAL: Refinanciar préstamo                          --}}
 {{-- ════════════════════════════════════════════════════ --}}
-<div class="modal fade" id="modal-refinanciar" tabindex="-1"
+<div class="modal fade ios-form" id="modal-refinanciar" tabindex="-1"
      role="dialog" aria-labelledby="modal-refi-titulo" aria-modal="true"
      style="overflow-y:scroll">
   <div class="modal-dialog modal-xl" role="document">
