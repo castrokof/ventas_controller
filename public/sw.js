@@ -1,7 +1,7 @@
 /* public/sw.js — Coll-System V2 PWA Service Worker */
 'use strict';
 
-const CACHE_V  = 'coll-v2-1';
+const CACHE_V  = 'coll-v2-2';
 const OFFLINE  = 'offline.html';
 
 /* ═══ Install ════════════════════════════════════════════════════════════════ */
@@ -54,7 +54,8 @@ self.addEventListener('fetch', e => {
 
 /* ── Estrategia: Cache First ─────────────────────────────────────────────── */
 async function cacheFirst(req) {
-    const hit = await caches.match(req, { ignoreSearch: true });
+    /* NO usar ignoreSearch: el query ?v=filemtime es el cache-busting de los assets */
+    const hit = await caches.match(req);
     if (hit) return hit;
     try {
         const res = await fetch(req);

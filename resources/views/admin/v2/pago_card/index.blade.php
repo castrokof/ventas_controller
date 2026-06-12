@@ -169,6 +169,34 @@ window.CAL_BASE = '{{ url("admin/v2/pago-card") }}';
 </script>
 <script src="{{ asset('assets/pages/scripts/admin/v2/pago_card/calendar.js') }}?v={{ filemtime(public_path('assets/pages/scripts/admin/v2/pago_card/calendar.js')) }}" type="text/javascript"></script>
 <script>
+/* Filtro del panel — inline para evitar caché vieja de calendar.js (PWA).
+   Sobrescribe la versión global de calendar.js agregando el filtro HOY. */
+window.filtrarPanel = function () {
+    var hoy = (typeof todayStr !== 'undefined')
+        ? todayStr
+        : new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Argentina/Buenos_Aires' });
+
+    var q            = ($('#panel-search').val() || '').toLowerCase().trim();
+    var filtroEstado = ($('[data-filter].active').data('filter') || 'all');
+
+    $('#btn-clear-search').toggle(q.length > 0);
+
+    var visible = 0;
+    $('.cuota-card').each(function () {
+        var matchSearch = !q || ($(this).data('search') || '').indexOf(q) >= 0;
+        var estado = $(this).data('estado');
+        var matchEstado = filtroEstado === 'all'
+            || estado === filtroEstado
+            || (filtroEstado === 'P' && estado === 'T')
+            || (filtroEstado === 'HOY' && (estado === 'C' || estado === 'A') && $(this).attr('data-fecha') === hoy);
+        var show = matchSearch && matchEstado;
+        $(this).toggle(show);
+        if (show) visible++;
+    });
+
+    $('#panel-no-results').toggle(visible === 0 && $('.cuota-card').length > 0);
+};
+
 /* Cálculo automático préstamo — inline para evitar caché */
 $(function () {
     var BASE_PRESTAMO = (window.CAL_BASE || '/admin/v2/pago-card').replace(/\/pago-card$/, '/prestamo');
