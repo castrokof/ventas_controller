@@ -21,6 +21,7 @@
 /* ── Base URL (inyectada desde la vista) ────────────────────────────────────── */
 const BASE_PC = (window.CAL_BASE || '/admin/v2/pago-card');
 const BASE_P  = BASE_PC.replace(/\/pago-card$/, '/prestamo');
+const ROUTE_ACTUALIZAR_CUOTA_FECHA = (window.ROUTE_ACTUALIZAR_CUOTA_FECHA || '/detalle_prestamo');
 
 /* ── Idioma DataTables ──────────────────────────────────────────────────────── */
 const idioma = {
@@ -536,16 +537,77 @@ $(function () {
      * ════════════════════════════════════════════════════════════════════════ */
 
     $('#customSwitch1').on('change', function () {
-        if ($(this).is(':checked')) {
+        var esDiario = ($('#tipo_pago').val() === 'Diario');
+        if ($(this).is(':checked') && !esDiario) {
             $('#chance_fecha').show();
+            $('#new_date').prop('required', true);
+            $('#valor_abono_ocultar').hide();
+            $('#valor_abono').prop('required', false);
         } else {
+            $(this).prop('checked', false);
             $('#chance_fecha').hide();
-            $('#new_date').val('');
+            $('#new_date').val('').prop('required', false);
+            $('#valor_abono_ocultar').show();
+            $('#valor_abono').prop('required', true);
         }
     });
 
     $('#form-general').on('submit', function (e) {
         e.preventDefault();
+
+        /* ── Cambiar fecha de la cuota (sin registrar pago) ──────────────── */
+        if ($('#customSwitch1').is(':checked')) {
+            var nuevaFecha = $('#new_date').val();
+            if (!nuevaFecha) {
+                Swal.fire('Aviso', 'Selecciona la nueva fecha de la cuota.', 'warning');
+                return;
+            }
+            Swal.fire({
+                title: '¿Cambiar la fecha de esta cuota?',
+                icon: 'question',
+                showCancelButton:  true,
+                confirmButtonText: 'Sí',
+                cancelButtonText:  'Cancelar',
+            }).then(function (res) {
+                if (!res.value) return;
+                $.ajax({
+                    url:      ROUTE_ACTUALIZAR_CUOTA_FECHA,
+                    method:   'POST',
+                    dataType: 'json',
+                    data: {
+                        _token:         $('meta[name="csrf-token"]').attr('content')
+                                     || $('input[name="_token"]').first().val(),
+                        prestamo_id:    $('#idp').val(),
+                        numero_cuota:   $('#n_cuota').val(),
+                        new_date_fecha: nuevaFecha,
+                    },
+                    success: function (resp) {
+                        if (resp.success === 'okdate') {
+                            $('#modal-pd').modal('hide');
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Fecha de la cuota actualizada',
+                                showConfirmButton: false,
+                                timer: 2000,
+                            });
+                            if (selDate) cargarCuotasDia(selDate);
+                            if ($('#cal-container').is(':visible')) {
+                                cargarCalendario(calYear, calMonth, selDate);
+                            }
+                            if ($('#prestamos-container').is(':visible')) {
+                                cargarListaPrestamos();
+                            }
+                        } else {
+                            Swal.fire('Aviso', 'No se pudo cambiar la fecha.', 'warning');
+                        }
+                    },
+                    error: function () {
+                        Swal.fire('Error', 'No se pudo cambiar la fecha.', 'error');
+                    },
+                });
+            });
+            return;
+        }
 
         var modo = $(this).data('modo') || 'crear';
         var pid  = $(this).data('pid');
@@ -634,7 +696,10 @@ $(function () {
         $('#form-general').removeData('modo').removeData('pid');
         $('#form_result').html('');
         $('#chance_fecha').hide();
+        $('#new_date').val('').prop('required', false);
         $('#customSwitch1').prop('checked', false);
+        $('#valor_abono_ocultar').show();
+        $('#valor_abono').prop('required', true);
     });
 
     $('#modal-acuotas').on('hidden.bs.modal', function () {

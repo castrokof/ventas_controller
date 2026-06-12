@@ -166,6 +166,7 @@ body.sel-masivo-on { padding-bottom:62px; }
 <script src="{{ asset('assets/js/jquery-select2/select2.min.js') }}"></script>
 <script>
 window.CAL_BASE = '{{ url("admin/v2/pago-card") }}';
+window.ROUTE_ACTUALIZAR_CUOTA_FECHA = '{{ route("actualizar_cuota_fecha") }}';
 </script>
 <script src="{{ asset('assets/pages/scripts/admin/v2/pago_card/calendar.js') }}?v={{ filemtime(public_path('assets/pages/scripts/admin/v2/pago_card/calendar.js')) }}" type="text/javascript"></script>
 <script>
@@ -507,6 +508,181 @@ $(function () {
                 );
             }
         });
+    });
+});
+
+/* Cambiar fecha individual (form de pago) — inline para evitar caché vieja
+   de calendar.js (PWA). Reemplaza los handlers de #customSwitch1 y
+   #form-general para que "Cambiar fecha" llame a actualizar_cuota_fecha
+   en lugar de enviar un pago vacío a /guardar. */
+$(function () {
+    var BASE_PC   = (window.CAL_BASE || '/admin/v2/pago-card');
+    var RUTA_FECHA = (window.ROUTE_ACTUALIZAR_CUOTA_FECHA || '/detalle_prestamo');
+
+    $('#customSwitch1').off('change').on('change', function () {
+        var esDiario = ($('#tipo_pago').val() === 'Diario');
+        if ($(this).is(':checked') && !esDiario) {
+            $('#chance_fecha').show();
+            $('#new_date').prop('required', true);
+            $('#valor_abono_ocultar').hide();
+            $('#valor_abono').prop('required', false);
+        } else {
+            $(this).prop('checked', false);
+            $('#chance_fecha').hide();
+            $('#new_date').val('').prop('required', false);
+            $('#valor_abono_ocultar').show();
+            $('#valor_abono').prop('required', true);
+        }
+    });
+
+    $('#form-general').off('submit').on('submit', function (e) {
+        e.preventDefault();
+
+        /* ── Cambiar fecha de la cuota (sin registrar pago) ──────────────── */
+        if ($('#customSwitch1').is(':checked')) {
+            var nuevaFecha = $('#new_date').val();
+            if (!nuevaFecha) {
+                Swal.fire('Aviso', 'Selecciona la nueva fecha de la cuota.', 'warning');
+                return;
+            }
+            Swal.fire({
+                title: '¿Cambiar la fecha de esta cuota?',
+                icon: 'question',
+                showCancelButton:  true,
+                confirmButtonText: 'Sí',
+                cancelButtonText:  'Cancelar',
+            }).then(function (res) {
+                if (!res.value) return;
+                $.ajax({
+                    url:      RUTA_FECHA,
+                    method:   'POST',
+                    dataType: 'json',
+                    data: {
+                        _token:         $('meta[name="csrf-token"]').attr('content')
+                                     || $('input[name="_token"]').first().val(),
+                        prestamo_id:    $('#idp').val(),
+                        numero_cuota:   $('#n_cuota').val(),
+                        new_date_fecha: nuevaFecha,
+                    },
+                    success: function (resp) {
+                        if (resp.success === 'okdate') {
+                            $('#modal-pd').modal('hide');
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Fecha de la cuota actualizada',
+                                showConfirmButton: false,
+                                timer: 2000,
+                            });
+                            if (selDate) cargarCuotasDia(selDate);
+                            if ($('#cal-container').is(':visible')) {
+                                cargarCalendario(calYear, calMonth, selDate);
+                            }
+                            if ($('#prestamos-container').is(':visible')) {
+                                cargarListaPrestamos();
+                            }
+                        } else {
+                            Swal.fire('Aviso', 'No se pudo cambiar la fecha.', 'warning');
+                        }
+                    },
+                    error: function () {
+                        Swal.fire('Error', 'No se pudo cambiar la fecha.', 'error');
+                    },
+                });
+            });
+            return;
+        }
+
+        var modo = $(this).data('modo') || 'crear';
+        var pid  = $(this).data('pid');
+        var url  = (modo === 'editar') ? BASE_PC + '/' + pid : BASE_PC + '/guardar';
+
+        Swal.fire({
+            title: modo === 'editar' ? '¿Actualizar pago?' : '¿Registrar pago?',
+            icon: 'question',
+            showCancelButton:  true,
+            confirmButtonText: 'Sí',
+            cancelButtonText:  'Cancelar',
+        }).then(function (res) {
+            if (!res.value) return;
+
+            var data = $(e.target).serialize()
+                     + (modo === 'editar' ? '&_method=PUT' : '')
+                     + gpsQueryString();
+
+            $.ajax({
+                url:      url,
+                method:   'POST',
+                data:     data,
+                dataType: 'json',
+                success: function (resp) {
+                    /* Pago guardado offline por el Service Worker */
+                    if (resp.offline_queued) {
+                        $('#modal-pd').modal('hide');
+                        if (typeof pwaAddCount === 'function') pwaAddCount(1);
+                        Swal.fire({
+                            icon: 'info',
+                            title: 'Sin conexión',
+                            text: 'Pago guardado localmente. Se enviará al servidor cuando recuperes señal.',
+                            showConfirmButton: false,
+                            timer: 3500,
+                        });
+                        return;
+                    }
+
+                    var mensajes = {
+                        ok:          'Pago registrado correctamente.',
+                        total:       'Crédito cancelado en su totalidad.',
+                        okadelanto:  'Adelanto registrado correctamente.',
+                        abono:       'Abono parcial registrado.',
+                        okca:        'Pago de cuota atrasada registrado.',
+                        abonoa:      'Abono a cuota atrasada registrado.',
+                        noat:        'Pago registrado y atraso saldado.',
+                        oka:         'Pago actualizado correctamente.',
+                        noadelanto:  'El abono supera el valor de la cuota.',
+                        error:       'No se pudo procesar el pago.',
+                        noa:         'El abono no corresponde al monto esperado.',
+                        adelantos:   'Para adelantar cuotas use "Add Cuotas".',
+                        vcda:        'El abono debe ser igual al atraso + valor cuota.',
+                        adelantosa:  'El abono supera el monto permitido.',
+                        okcaerror:   'Error al procesar la cuota atrasada.',
+                    };
+                    var errores = ['error','noadelanto','noa','adelantos','vcda','adelantosa','okcaerror'];
+                    var esError = errores.includes(resp.success);
+
+                    Swal.fire({
+                        icon:  esError ? 'warning' : 'success',
+                        title: mensajes[resp.success] || 'Operación completada.',
+                        showConfirmButton: false,
+                        timer: 2200,
+                    });
+
+                    if (!esError) {
+                        $('#modal-pd').modal('hide');
+                        if (selDate) cargarCuotasDia(selDate);
+                        if ($('#cal-container').is(':visible')) {
+                            cargarCalendario(calYear, calMonth, selDate);
+                        }
+                        if ($('#prestamos-container').is(':visible')) {
+                            cargarListaPrestamos();
+                        }
+                    }
+                },
+                error: function () {
+                    Swal.fire('Error', 'No se pudo registrar el pago.', 'error');
+                },
+            });
+        });
+    });
+
+    $('#modal-pd').off('hidden.bs.modal').on('hidden.bs.modal', function () {
+        $('#form-general')[0].reset();
+        $('#form-general').removeData('modo').removeData('pid');
+        $('#form_result').html('');
+        $('#chance_fecha').hide();
+        $('#new_date').val('').prop('required', false);
+        $('#customSwitch1').prop('checked', false);
+        $('#valor_abono_ocultar').show();
+        $('#valor_abono').prop('required', true);
     });
 });
 </script>
