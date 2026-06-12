@@ -82,7 +82,7 @@ var mcpSel      = {};
 
 function selBarActualizar() {
     var n = Object.keys(seleccionIds).length;
-    if (n === 0) {
+    if (n === 0 && !selMasivo) {
         $('#sel-bar').hide();
         $('body').removeClass('sel-masivo-on');
     } else {
@@ -90,6 +90,7 @@ function selBarActualizar() {
         $('body').addClass('sel-masivo-on');
     }
     $('#sel-count').text(n);
+    $('#btn-sel-cambiar, #btn-sel-pagar').prop('disabled', n === 0);
 }
 
 function selLimpiar() {
@@ -97,6 +98,81 @@ function selLimpiar() {
     $('.cuota-card').removeClass('seleccionada');
     $('.cuota-check').prop('checked', false);
     selBarActualizar();
+}
+
+/* ── Pago masivo de cuotas seleccionadas (panel diario) ───────────────────── */
+function selPagarSeleccionadas() {
+    var ids = Object.keys(seleccionIds);
+    if (!ids.length) return;
+
+    var csrf = $('meta[name="csrf-token"]').attr('content')
+            || $('input[name="_token"]').first().val();
+
+    $('#btn-sel-pagar, #btn-sel-cambiar, #btn-sel-limpiar, #btn-sel-todos')
+        .prop('disabled', true);
+    $('#sel-count').after('<span id="sel-progreso" class="ml-2"></span>');
+
+    var idx  = 0;
+    var ok   = 0;
+    var fail = 0;
+
+    function siguiente() {
+        if (idx >= ids.length) {
+            $('#sel-progreso').remove();
+            $('#btn-sel-limpiar, #btn-sel-todos').prop('disabled', false);
+            selLimpiar();
+            selMasivo = false;
+            $('#btn-modo-masivo').removeClass('activo');
+            if (selDate) cargarCuotasDia(selDate);
+            if ($('#cal-container').is(':visible')) {
+                cargarCalendario(calYear, calMonth, selDate);
+            }
+            if ($('#prestamos-container').is(':visible')) {
+                cargarListaPrestamos();
+            }
+            Swal.fire({
+                icon: fail ? 'warning' : 'success',
+                title: ok + ' cuota(s) pagada(s)' + (fail ? ' · ' + fail + ' con error' : ''),
+                showConfirmButton: false,
+                timer: 2000
+            });
+            return;
+        }
+
+        var idd = ids[idx++];
+        var c   = seleccionIds[idd];
+        $('#sel-progreso').text('Pagando ' + idx + '/' + ids.length + '...');
+
+        $.ajax({
+            url:      BASE_PC + '/guardar',
+            method:   'POST',
+            dataType: 'json',
+            data: $.extend({
+                _token:           csrf,
+                prestamo_id:      c.idp,
+                numero_cuota:     c.cuota,
+                valor_cuota:      c.valorCuota,
+                valor_abono:      c.valorCuota,
+                estado_cuota:     'C',
+                fecha_pago:       c.fechaActual <= todayStr ? todayStr : c.fechaActual,
+                vatraso:          0,
+                observacion_pago: ''
+            }, gpsParams()),
+            success: function (resp) {
+                if (resp.offline_queued) {
+                    if (typeof pwaAddCount === 'function') pwaAddCount(1);
+                    ok++;
+                } else {
+                    var errores = ['error','noadelanto','noa','adelantos','vcda','adelantosa','okcaerror'];
+                    if (errores.includes(resp.success)) fail++; else ok++;
+                }
+                siguiente();
+            },
+            error: function () { fail++; siguiente(); }
+        });
+    }
+
+    siguiente();
 }
 
 /* ── Barra de fecha ─────────────────────────────────────────────────────────── */
@@ -590,7 +666,7 @@ $(function () {
     $('#btn-modo-masivo').on('click', function () {
         selMasivo = !selMasivo;
         $(this).toggleClass('activo', selMasivo);
-        if (!selMasivo) { selLimpiar(); }
+        if (!selMasivo) { selLimpiar(); } else { selBarActualizar(); }
         if (selDate) cargarCuotasDia(selDate);
     });
 
@@ -601,7 +677,9 @@ $(function () {
             seleccionIds[idd] = {
                 nombre:      $card.data('nombre') || '',
                 cuota:       $card.data('cuota')  || '',
-                fechaActual: $card.data('fecha')  || ''
+                fechaActual: $card.data('fecha')  || '',
+                idp:         $card.data('idp'),
+                valorCuota:  $card.data('valor')  || 0
             };
             $card.addClass('seleccionada');
         } else {
@@ -613,6 +691,14 @@ $(function () {
 
     $('#btn-sel-limpiar').on('click', function () {
         selLimpiar();
+    });
+
+    $('#btn-sel-todos').on('click', function () {
+        $('.cuota-card:visible .cuota-check').each(function () {
+            if (!$(this).is(':checked')) {
+                $(this).prop('checked', true).trigger('change');
+            }
+        });
     });
 
     $('#btn-sel-cambiar').on('click', function () {
@@ -675,6 +761,21 @@ $(function () {
         $('#btn-cf-confirmar').prop('disabled', false)
             .html('<i class="fas fa-check mr-1"></i>Aplicar cambio');
         $('#cf-feedback').hide().text('');
+    });
+
+    $('#btn-sel-pagar').on('click', function () {
+        var n = Object.keys(seleccionIds).length;
+        if (n === 0) return;
+        Swal.fire({
+            title: '¿Pagar ' + n + ' cuota(s) seleccionada(s)?',
+            html: 'Se registrará el valor completo de cada cuota como pago.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, pagar',
+            cancelButtonText: 'Cancelar',
+        }).then(function (res) {
+            if (res.value) selPagarSeleccionadas();
+        });
     });
 
     /* ════════════════════════════════════════════════════════════════════════
@@ -999,6 +1100,10 @@ function cargarCuotasDia(fecha) {
                           + c.cuotas_atrasadas + ' atraso(s)</small>'
                         : '';
 
+                    var hoyBadge = ((c.estado === 'C' || c.estado === 'A') && c.fecha_cuota === todayStr)
+                        ? ' <span class="badge badge-info">Hoy</span>'
+                        : '';
+
                     var yaSel     = selMasivo && !!seleccionIds[c.idd];
                     var checkHtml = selMasivo && !esPagada
                         ? '<input type="checkbox" class="cuota-check" data-idd="' + c.idd + '"'
@@ -1010,6 +1115,8 @@ function cargarCuotasDia(fecha) {
                           + ' data-estado="' + c.estado + '"'
                           + ' data-nombre="' + escHtml(c.nombres + ' ' + c.apellidos) + '"'
                           + ' data-cuota="' + c.d_numero_cuota + '"'
+                          + ' data-idp="' + c.idp + '"'
+                          + ' data-valor="' + parseFloat(c.valor_cuota || 0) + '"'
                           + ' data-fecha="' + escHtml(c.fecha_cuota || '') + '">'
                           + '  <div class="d-flex align-items-start justify-content-between">'
                           + '    ' + checkHtml
@@ -1022,7 +1129,7 @@ function cargarCuotasDia(fecha) {
                           + '    </div>'
                           + '    <div class="text-right ml-2" style="flex-shrink:0">'
                           + '      <div class="cc-value">$' + valor + '</div>'
-                          + '      ' + badge
+                          + '      ' + badge + hoyBadge
                           + '    </div>'
                           + '  </div>'
                           + (selMasivo ? '' :
