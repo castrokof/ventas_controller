@@ -1300,8 +1300,14 @@ function rellenarModalPago(d) {
     $('#n_cuota').val(d.d_numero_cuota || '');
     $('#valor_cuota').val(d.valor_cuota || '');
     $('#estado_cuota').val(d.estado || '');
-    $('#vatraso').val(d.monto_atrasado || 0);
-    $('#valor_abono').val(d.valor_cuota || '');
+
+    /* Saldo pendiente de ESTA cuota (valor_cuota - lo ya abonado).
+       #vatraso y #valor_abono deben coincidir por defecto para que
+       el pago de una cuota atrasada se procese como "okca". */
+    var pendiente = Math.round(parseFloat(d.valor_cuota || 0))
+                  - Math.round(parseFloat(d.valor_cuota_pagada || 0));
+    $('#vatraso').val(pendiente);
+    $('#valor_abono').val(pendiente);
     $('#observacion').val('');
 }
 

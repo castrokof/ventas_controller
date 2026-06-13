@@ -198,6 +198,26 @@ window.filtrarPanel = function () {
     $('#panel-no-results').toggle(visible === 0 && $('.cuota-card').length > 0);
 };
 
+/* rellenarModalPago — inline para evitar caché vieja de calendar.js (PWA).
+   #vatraso y #valor_abono deben ser el saldo pendiente de ESTA cuota
+   (valor_cuota - valor_cuota_pagada), igual que la vista original, para
+   que el pago de una cuota atrasada se procese como "okca". */
+window.rellenarModalPago = function (d) {
+    $('#nombres').val((d.nombres || '') + ' ' + (d.apellidos || ''));
+    $('#tipo_pago').val(d.tipo_pago || '');
+    $('#idp').val(d.idp || d.prestamo_id || '');
+    $('#fecha_cuota').val(d.fecha_cuota || '');
+    $('#n_cuota').val(d.d_numero_cuota || '');
+    $('#valor_cuota').val(d.valor_cuota || '');
+    $('#estado_cuota').val(d.estado || '');
+
+    var pendiente = Math.round(parseFloat(d.valor_cuota || 0))
+                  - Math.round(parseFloat(d.valor_cuota_pagada || 0));
+    $('#vatraso').val(pendiente);
+    $('#valor_abono').val(pendiente);
+    $('#observacion').val('');
+};
+
 /* Selección masiva — inline para evitar caché vieja de calendar.js (PWA).
    Reemplaza los handlers del modo masivo y agrega "Seleccionar todos",
    "Pagar" masivo y el badge "Hoy" en las cuota-cards. */

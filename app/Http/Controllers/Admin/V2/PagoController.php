@@ -633,7 +633,7 @@ class PagoController extends Controller
             $sa      = Prestamo::where('idp',$request->prestamo_id)->first();
             $saldop  = $sa->monto_pendiente;
             $pagoa   = Pago::where([['prestamo_id',$request->prestamo_id],['numero_cuota',$request->numero_cuota]])->first();
-            $pagoqa  = $pagoa->valor_abono;
+            $pagoqa  = $pagoa ? $pagoa->valor_abono : 0;
 
             if ($request->valor_abono == $request->vatraso) {
                 $this->crearPago($request);
