@@ -189,7 +189,7 @@ window.filtrarPanel = function () {
         var matchEstado = filtroEstado === 'all'
             || estado === filtroEstado
             || (filtroEstado === 'P' && estado === 'T')
-            || (filtroEstado === 'HOY' && (estado === 'C' || estado === 'A') && $(this).attr('data-fecha') === hoy);
+            || (filtroEstado === 'HOY' && estado === 'C' && $(this).attr('data-fecha') === hoy);
         var show = matchSearch && matchEstado;
         $(this).toggle(show);
         if (show) visible++;
