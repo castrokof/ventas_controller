@@ -1165,7 +1165,7 @@ function cargarCuotasDia(fecha) {
                           + c.cuotas_atrasadas + ' atraso(s)</small>'
                         : '';
 
-                    var hoyBadge = ((c.estado === 'C' || c.estado === 'A') && c.fecha_cuota === todayStr)
+                    var hoyBadge = (c.estado === 'C' && c.fecha_cuota === todayStr)
                         ? ' <span class="badge badge-info">Hoy</span>'
                         : '';
 

@@ -369,17 +369,21 @@ $(function () {
         siguiente();
     }
 
-    /* Badge "Hoy" en cuotas pendientes/atrasadas con vencimiento hoy.
+    /* Badge "Hoy" solo en cuotas pendientes (C) con vencimiento hoy.
+       Las atrasadas (A) ya no se consideran "de hoy": viven en la pestaña Atrasadas.
        Decora las cards después de cada render (también con calendar.js viejo). */
     function decorarBadgesHoy() {
         var hoy = hoyStr();
         $('#panel-list .cuota-card').each(function () {
             var $c = $(this);
             var e  = $c.data('estado');
-            if ((e === 'C' || e === 'A') && $c.attr('data-fecha') === hoy
+            if (e === 'C' && $c.attr('data-fecha') === hoy
                 && !$c.find('.badge:contains(Hoy)').length) {
                 $c.find('.text-right').first()
                   .append(' <span class="badge badge-info badge-hoy">Hoy</span>');
+            }
+            if (e !== 'C' && $c.attr('data-fecha') === hoy) {
+                $c.find('.badge:contains(Hoy)').remove();
             }
         });
     }
