@@ -239,6 +239,7 @@ window.rellenarModalPago = function (d) {
    "Pagar" masivo y el badge "Hoy" en las cuota-cards. */
 $(function () {
     var BASE = (window.CAL_BASE || '/admin/v2/pago-card');
+    var historialCambiosFecha = [];
 
     function hoyStr() {
         return (typeof todayStr !== 'undefined') ? todayStr
@@ -462,9 +463,15 @@ $(function () {
         $('#cf-feedback').hide().text('');
     });
 
-    function mostrarModalDeshacer(cambios) {
+    function actualizarBtnDeshacer() {
+        var n = historialCambiosFecha.length;
+        $('#badge-deshacer-fecha').text(n);
+        $('#btn-deshacer-fecha').toggle(n > 0);
+    }
+
+    function renderModalDeshacer() {
         var html = '';
-        cambios.forEach(function (c) {
+        historialCambiosFecha.forEach(function (c) {
             html += '<div class="form-check df-item mb-2" data-idd="' + c.idd
                   + '" data-fecha-anterior="' + escHtml(c.fechaAnterior) + '">'
                   + '  <input type="checkbox" class="form-check-input df-check" id="df-' + c.idd + '">'
@@ -479,6 +486,26 @@ $(function () {
             .html('<i class="fas fa-undo mr-1"></i>Deshacer seleccionadas');
         $('#modal-deshacer-fecha').modal('show');
     }
+
+    function mostrarModalDeshacer(cambios) {
+        cambios.forEach(function (c) {
+            var existente = historialCambiosFecha.find(function (h) { return h.idd === c.idd; });
+            if (existente) {
+                existente.nombre = c.nombre;
+                existente.cuota  = c.cuota;
+                /* se conserva fechaAnterior original, anterior al primer cambio */
+            } else {
+                historialCambiosFecha.push(c);
+            }
+        });
+        actualizarBtnDeshacer();
+        renderModalDeshacer();
+    }
+
+    $('#btn-deshacer-fecha').off('click').on('click', function () {
+        if (!historialCambiosFecha.length) return;
+        renderModalDeshacer();
+    });
 
     $(document).off('change', '.df-check').on('change', '.df-check', function () {
         $('#btn-df-confirmar').prop('disabled', $('#df-lista .df-check:checked').length === 0);
@@ -505,6 +532,12 @@ $(function () {
             },
             success: function (resp) {
                 if (resp.success) {
+                    var idsRevertidos = cambios.map(function (c) { return c.idd; });
+                    historialCambiosFecha = historialCambiosFecha.filter(function (h) {
+                        return idsRevertidos.indexOf(h.idd) === -1;
+                    });
+                    actualizarBtnDeshacer();
+
                     $('#df-lista .df-check:checked').each(function () {
                         $(this).closest('.df-item').remove();
                     });
@@ -953,6 +986,12 @@ $(function () {
             title="Selección masiva (cambiar fecha / pagar)">
       <i class="fas fa-calendar-check"></i>
     </button>
+    <button id="btn-deshacer-fecha" class="btn btn-sm btn-outline-info position-relative"
+            title="Deshacer cambios de fecha recientes" style="display:none">
+      <i class="fas fa-undo"></i>
+      <span id="badge-deshacer-fecha" class="badge badge-danger position-absolute"
+            style="top:-6px;right:-6px;font-size:10px;line-height:1.2">0</span>
+    </button>
   </div>
 </div>
 
@@ -1358,11 +1397,12 @@ $(function () {
 {{-- ════════════════════════════════════════════════════════ --}}
 <div class="modal fade" id="modal-deshacer-fecha" tabindex="-1"
      role="dialog" aria-labelledby="modal-df-titulo" aria-modal="true">
-  <div class="modal-dialog modal-sm" role="document">
+  <div class="modal-dialog modal-sm modal-dialog-scrollable" role="document"
+       style="max-height:calc(100% - 1rem)">
     <div class="modal-content">
       <div class="modal-header" style="background:#17a2b8;color:#fff">
         <h6 class="modal-title font-weight-bold" id="modal-df-titulo">
-          <i class="fas fa-undo mr-1"></i> Cuotas actualizadas
+          <i class="fas fa-undo mr-1"></i> Deshacer cambios de fecha
         </h6>
         <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar" style="color:#fff">
           <span aria-hidden="true">&times;</span>
@@ -1372,7 +1412,7 @@ $(function () {
         <p class="mb-2" style="font-size:13px">
           Marca las cuotas que NO quieras dejar con la nueva fecha para devolverlas a su fecha anterior.
         </p>
-        <div id="df-lista" style="max-height:260px;overflow-y:auto"></div>
+        <div id="df-lista"></div>
       </div>
       <div class="modal-footer py-2 justify-content-between">
         <button type="button" class="btn btn-sm btn-secondary" data-dismiss="modal">Listo</button>
