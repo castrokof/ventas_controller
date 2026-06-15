@@ -113,13 +113,6 @@ body.sel-masivo-on { padding-bottom:62px; }
     .barra-acciones .btn   { padding:4px 8px; font-size:12px; }
 }
 
-/* ── Modal deshacer cambios de fecha: asegurar que el footer
-   (botón "Deshacer seleccionadas") siempre quede visible aunque
-   la lista de cuotas sea larga ──────────────────────────────── */
-#modal-deshacer-fecha .modal-content { max-height:90vh; overflow:hidden; }
-#modal-deshacer-fecha .modal-body    { overflow-y:auto; }
-#modal-deshacer-fecha .modal-footer  { flex-shrink:0; }
-
 /* ── Modal cuotas del préstamo ─────────────────────── */
 .cc-info-link { cursor:pointer; }
 .cc-info-link:hover .cc-name { color:#6366f1; text-decoration:underline; }
@@ -1410,8 +1403,7 @@ $(function () {
 {{-- ════════════════════════════════════════════════════════ --}}
 <div class="modal fade" id="modal-deshacer-fecha" tabindex="-1"
      role="dialog" aria-labelledby="modal-df-titulo" aria-modal="true">
-  <div class="modal-dialog modal-sm modal-dialog-scrollable" role="document"
-       style="max-height:calc(100% - 1rem)">
+  <div class="modal-dialog modal-sm" role="document">
     <div class="modal-content">
       <div class="modal-header" style="background:#17a2b8;color:#fff">
         <h6 class="modal-title font-weight-bold" id="modal-df-titulo">
@@ -1425,13 +1417,15 @@ $(function () {
         <p class="mb-2" style="font-size:13px">
           Marca las cuotas que NO quieras dejar con la nueva fecha para devolverlas a su fecha anterior.
         </p>
-        <div id="df-lista"></div>
-      </div>
-      <div class="modal-footer py-2 justify-content-between">
-        <button type="button" class="btn btn-sm btn-secondary" data-dismiss="modal">Listo</button>
-        <button type="button" id="btn-df-confirmar" class="btn btn-sm btn-info font-weight-bold" disabled>
-          <i class="fas fa-undo mr-1"></i>Deshacer seleccionadas
-        </button>
+        <div id="df-lista" style="max-height:45vh;overflow-y:auto"></div>
+
+        {{-- Botón de acción dentro del body para garantizar visibilidad --}}
+        <div class="d-flex justify-content-between mt-3 pt-2 border-top">
+          <button type="button" class="btn btn-sm btn-secondary" data-dismiss="modal">Listo</button>
+          <button type="button" id="btn-df-confirmar" class="btn btn-sm btn-info font-weight-bold" disabled>
+            <i class="fas fa-undo mr-1"></i>Deshacer seleccionadas
+          </button>
+        </div>
       </div>
     </div>
   </div>
