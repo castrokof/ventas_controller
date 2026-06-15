@@ -190,21 +190,21 @@
       Opciones de calendario
     </label>
     <div class="d-flex flex-wrap" style="gap:18px">
-      <div class="custom-control custom-switch">
+      <div class="custom-control custom-checkbox">
         <input type="checkbox" class="custom-control-input"
                name="incluir_domingo" id="incluir_domingo" value="1">
         <label class="custom-control-label" for="incluir_domingo">
           Cobrar domingos
         </label>
       </div>
-      <div class="custom-control custom-switch">
+      <div class="custom-control custom-checkbox">
         <input type="checkbox" class="custom-control-input"
                name="incluir_festivo" id="incluir_festivo" value="1">
         <label class="custom-control-label" for="incluir_festivo">
           Cobrar feriados argentinos
         </label>
       </div>
-      <div class="custom-control custom-switch">
+      <div class="custom-control custom-checkbox">
         <input type="checkbox" class="custom-control-input"
                id="interes_prorrateado" value="1">
         <label class="custom-control-label" for="interes_prorrateado">
