@@ -1071,8 +1071,18 @@ $(function () {
     /* Cuotas equivalentes a 1 mes según el tipo de pago (la tasa de interés es mensual) */
     var CUOTAS_POR_MES = { Diario: 24, Semanal: 4, Quincenal: 2, Mensual: 1 };
 
+    /* Formato moneda (es-CO: punto como separador de miles) para los campos
+       monto, monto total y valor cuota. */
+    function formatMoneda(num) {
+        num = Math.round(parseFloat(num) || 0);
+        return num ? num.toLocaleString('es-CO') : '';
+    }
+    function parseMoneda(str) {
+        return parseFloat(String(str || '').replace(/[^\d]/g, '')) || 0;
+    }
+
     function recalcularPrestamo() {
-        var monto  = parseFloat($('#montop').val())       || 0;
+        var monto  = parseMoneda($('#montop').val());
         var cuotas = parseInt($('#cuotas').val(), 10)     || 0;
         var interes= parseFloat($('#interes').val())      || 0;
         var tipo   = $('#tipo_pagop').val();
@@ -1093,10 +1103,16 @@ $(function () {
         total = Math.round(total);
         var valorCuota = Math.round(total / cuotas);
 
-        $('#monto_totalp').val(total);
-        $('#valor_cuotap').val(valorCuota);
+        $('#monto_totalp').val(formatMoneda(total));
+        $('#valor_cuotap').val(formatMoneda(valorCuota));
         $('#monto_pendientep').val(total);
     }
+
+    /* Formatear #montop con separadores de miles mientras se escribe */
+    $(document).on('input', '#montop', function () {
+        var raw = parseMoneda($(this).val());
+        $(this).val(formatMoneda(raw));
+    });
 
     $(document).on('input change', '#montop, #cuotas, #interes, #tipo_pagop, #interes_prorrateado', recalcularPrestamo);
 
@@ -1113,11 +1129,11 @@ $(function () {
     $('#form-prestamo').on('submit', function (e) {
         e.preventDefault();
 
-        var monto  = parseFloat($('#montop').val()) || 0;
+        var monto  = parseMoneda($('#montop').val());
         var cuotas = parseInt($('#cuotas').val(), 10) || 0;
         var interes= parseFloat($('#interes').val());
-        var total  = parseFloat($('#monto_totalp').val()) || 0;
-        var cuota  = parseFloat($('#valor_cuotap').val()) || 0;
+        var total  = parseMoneda($('#monto_totalp').val());
+        var cuota  = parseMoneda($('#valor_cuotap').val());
 
         if (!monto || !cuotas || isNaN(interes) || !total || !cuota) {
             $('#form-result-prestamo').html(
@@ -1131,11 +1147,21 @@ $(function () {
                     .html('<i class="fas fa-spinner fa-spin mr-1"></i>Guardando...');
         $('#form-result-prestamo').html('');
 
+        /* Enviar valores numéricos planos (sin separadores de miles) */
+        $('#montop').val(monto);
+        $('#monto_totalp').val(total);
+        $('#valor_cuotap').val(cuota);
+        var formData = $(this).serialize();
+        /* Restaurar el formato visual de los campos */
+        $('#montop').val(formatMoneda(monto));
+        $('#monto_totalp').val(formatMoneda(total));
+        $('#valor_cuotap').val(formatMoneda(cuota));
+
         $.ajax({
             url:      BASE_P,
             method:   'POST',
             dataType: 'json',
-            data:     $(this).serialize(),
+            data:     formData,
             success: function (data) {
                 $btn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i>Guardar préstamo');
                 if (data.errors) {
