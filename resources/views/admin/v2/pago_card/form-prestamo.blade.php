@@ -223,6 +223,7 @@
 
 {{-- Campos ocultos requeridos por el backend --}}
 <input type="hidden" name="activo"          value="1">
+<input type="hidden" name="estado"          value="C">
 <input type="hidden" name="monto_pendiente" id="monto_pendientep" value="">
 
 {{-- ── Nota informativa ─────────────────────────────────────── --}}
