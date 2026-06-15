@@ -28,16 +28,18 @@
       <i class="fas fa-dollar-sign fa-xs mr-1 text-muted" aria-hidden="true"></i>
       Monto <span class="text-danger" aria-hidden="true">*</span>
     </label>
-    <div class="input-group input-group-sm">
+    <div class="input-group">
       <div class="input-group-prepend">
         <span class="input-group-text" aria-hidden="true">$</span>
       </div>
-      <input type="number" name="monto" id="montop"
-             class="form-control"
+      <input type="text" inputmode="numeric" name="monto" id="montop"
+             class="form-control font-weight-bold"
+             style="font-size:1.15rem"
              value="{{ old('monto', $data->monto ?? '') }}"
-             min="1" required aria-required="true"
+             required aria-required="true"
              aria-label="Monto del préstamo"
-             placeholder="0">
+             placeholder="0"
+             autocomplete="off">
     </div>
   </div>
 
@@ -100,12 +102,13 @@
       <i class="fas fa-calculator fa-xs mr-1 text-muted" aria-hidden="true"></i>
       Monto total
     </label>
-    <div class="input-group input-group-sm">
+    <div class="input-group">
       <div class="input-group-prepend">
         <span class="input-group-text" aria-hidden="true">$</span>
       </div>
       <input type="text" name="monto_total" id="monto_totalp"
-             class="form-control bg-light"
+             class="form-control bg-light font-weight-bold"
+             style="font-size:1.15rem"
              value="{{ old('monto_total', $data->monto_total ?? '') }}"
              readonly
              aria-label="Monto total calculado" aria-readonly="true">
@@ -117,12 +120,13 @@
       <i class="fas fa-coins fa-xs mr-1 text-muted" aria-hidden="true"></i>
       Valor por cuota
     </label>
-    <div class="input-group input-group-sm">
+    <div class="input-group">
       <div class="input-group-prepend">
         <span class="input-group-text" aria-hidden="true">$</span>
       </div>
       <input type="text" name="valor_cuota" id="valor_cuotap"
-             class="form-control bg-light"
+             class="form-control bg-light font-weight-bold"
+             style="font-size:1.15rem"
              value="{{ old('valor_cuota', $data->valor_cuota ?? '') }}"
              readonly
              aria-label="Valor de cada cuota calculado" aria-readonly="true">
@@ -223,6 +227,7 @@
 
 {{-- Campos ocultos requeridos por el backend --}}
 <input type="hidden" name="activo"          value="1">
+<input type="hidden" name="estado"          value="C">
 <input type="hidden" name="monto_pendiente" id="monto_pendientep" value="">
 
 {{-- ── Nota informativa ─────────────────────────────────────── --}}

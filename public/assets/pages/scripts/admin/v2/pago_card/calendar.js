@@ -218,7 +218,8 @@ function filtrarPanel() {
 
 function resetFiltros() {
     $('[data-filter]').removeClass('active');
-    $('[data-filter="all"]').addClass('active');
+    var filtroDefault = (selDate === todayStr) ? 'HOY' : 'all';
+    $('[data-filter="' + filtroDefault + '"]').addClass('active');
     $('#panel-search').val('');
     $('#btn-clear-search').hide();
     filtrarPanel();
@@ -796,6 +797,17 @@ $(function () {
             },
             success: function (resp) {
                 if (resp.success) {
+                    var idsActualizados = resp.ids_actualizados || [];
+                    var cambios = idsActualizados.map(function (idd) {
+                        var info = seleccionIds[idd] || {};
+                        return {
+                            idd:           idd,
+                            nombre:        info.nombre || '',
+                            cuota:         info.cuota  || '',
+                            fechaAnterior: info.fechaActual || ''
+                        };
+                    });
+
                     $('#modal-cambiar-fecha').modal('hide');
                     selLimpiar();
                     selMasivo = false;
@@ -810,6 +822,8 @@ $(function () {
                         showConfirmButton: false,
                         timer: 2000
                     });
+
+                    if (cambios.length) mostrarModalDeshacer(cambios);
                 } else {
                     $('#cf-feedback').text(resp.msg || 'Error al actualizar.').show();
                     $btn.prop('disabled', false).html('<i class="fas fa-check mr-1"></i>Aplicar cambio');
@@ -826,6 +840,79 @@ $(function () {
         $('#btn-cf-confirmar').prop('disabled', false)
             .html('<i class="fas fa-check mr-1"></i>Aplicar cambio');
         $('#cf-feedback').hide().text('');
+    });
+
+    /* ── Deshacer selectivo del cambio masivo de fechas ──────────────────── */
+    function mostrarModalDeshacer(cambios) {
+        var html = '';
+        cambios.forEach(function (c) {
+            html += '<div class="form-check df-item mb-2" data-idd="' + c.idd
+                  + '" data-fecha-anterior="' + escHtml(c.fechaAnterior) + '">'
+                  + '  <input type="checkbox" class="form-check-input df-check" id="df-' + c.idd + '">'
+                  + '  <label class="form-check-label" for="df-' + c.idd + '" style="font-size:13px">'
+                  + '    ' + escHtml(c.nombre) + ' · Cuota #' + escHtml(String(c.cuota))
+                  + '    <small class="text-muted d-block">Volver a ' + escHtml(c.fechaAnterior) + '</small>'
+                  + '  </label>'
+                  + '</div>';
+        });
+        $('#df-lista').html(html);
+        $('#btn-df-confirmar').prop('disabled', true)
+            .html('<i class="fas fa-undo mr-1"></i>Deshacer seleccionadas');
+        $('#modal-deshacer-fecha').modal('show');
+    }
+
+    $(document).on('change', '.df-check', function () {
+        $('#btn-df-confirmar').prop('disabled', $('#df-lista .df-check:checked').length === 0);
+    });
+
+    $('#btn-df-confirmar').on('click', function () {
+        var cambios = [];
+        $('#df-lista .df-check:checked').each(function () {
+            var $item = $(this).closest('.df-item');
+            cambios.push({ idd: $item.data('idd'), fecha: $item.data('fecha-anterior') });
+        });
+        if (!cambios.length) return;
+
+        var $btn = $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i>Deshaciendo...');
+
+        $.ajax({
+            url:      BASE_PC + '/deshacer-fechas',
+            method:   'POST',
+            dataType: 'json',
+            data: {
+                _token:  $('meta[name="csrf-token"]').attr('content')
+                      || $('input[name="_token"]').first().val(),
+                cambios: cambios
+            },
+            success: function (resp) {
+                if (resp.success) {
+                    $('#df-lista .df-check:checked').each(function () {
+                        $(this).closest('.df-item').remove();
+                    });
+                    $btn.prop('disabled', true).html('<i class="fas fa-undo mr-1"></i>Deshacer seleccionadas');
+                    if (!$('#df-lista .df-item').length) {
+                        $('#modal-deshacer-fecha').modal('hide');
+                    }
+                    if (selDate) cargarCuotasDia(selDate);
+                    if ($('#cal-container').is(':visible')) {
+                        cargarCalendario(calYear, calMonth, selDate);
+                    }
+                    Swal.fire({
+                        icon: 'success',
+                        title: resp.actualizadas + ' cuota(s) revertidas',
+                        showConfirmButton: false,
+                        timer: 1800
+                    });
+                } else {
+                    $btn.prop('disabled', false).html('<i class="fas fa-undo mr-1"></i>Deshacer seleccionadas');
+                    Swal.fire('Error', resp.msg || 'No se pudo deshacer.', 'error');
+                }
+            },
+            error: function () {
+                $btn.prop('disabled', false).html('<i class="fas fa-undo mr-1"></i>Deshacer seleccionadas');
+                Swal.fire('Error', 'Error de red. Intenta de nuevo.', 'error');
+            }
+        });
     });
 
     $('#btn-sel-pagar').on('click', function () {
@@ -984,8 +1071,18 @@ $(function () {
     /* Cuotas equivalentes a 1 mes según el tipo de pago (la tasa de interés es mensual) */
     var CUOTAS_POR_MES = { Diario: 24, Semanal: 4, Quincenal: 2, Mensual: 1 };
 
+    /* Formato moneda (es-CO: punto como separador de miles) para los campos
+       monto, monto total y valor cuota. */
+    function formatMoneda(num) {
+        num = Math.round(parseFloat(num) || 0);
+        return num ? num.toLocaleString('es-CO') : '';
+    }
+    function parseMoneda(str) {
+        return parseFloat(String(str || '').replace(/[^\d]/g, '')) || 0;
+    }
+
     function recalcularPrestamo() {
-        var monto  = parseFloat($('#montop').val())       || 0;
+        var monto  = parseMoneda($('#montop').val());
         var cuotas = parseInt($('#cuotas').val(), 10)     || 0;
         var interes= parseFloat($('#interes').val())      || 0;
         var tipo   = $('#tipo_pagop').val();
@@ -1006,10 +1103,16 @@ $(function () {
         total = Math.round(total);
         var valorCuota = Math.round(total / cuotas);
 
-        $('#monto_totalp').val(total);
-        $('#valor_cuotap').val(valorCuota);
+        $('#monto_totalp').val(formatMoneda(total));
+        $('#valor_cuotap').val(formatMoneda(valorCuota));
         $('#monto_pendientep').val(total);
     }
+
+    /* Formatear #montop con separadores de miles mientras se escribe */
+    $(document).on('input', '#montop', function () {
+        var raw = parseMoneda($(this).val());
+        $(this).val(formatMoneda(raw));
+    });
 
     $(document).on('input change', '#montop, #cuotas, #interes, #tipo_pagop, #interes_prorrateado', recalcularPrestamo);
 
@@ -1026,11 +1129,11 @@ $(function () {
     $('#form-prestamo').on('submit', function (e) {
         e.preventDefault();
 
-        var monto  = parseFloat($('#montop').val()) || 0;
+        var monto  = parseMoneda($('#montop').val());
         var cuotas = parseInt($('#cuotas').val(), 10) || 0;
         var interes= parseFloat($('#interes').val());
-        var total  = parseFloat($('#monto_totalp').val()) || 0;
-        var cuota  = parseFloat($('#valor_cuotap').val()) || 0;
+        var total  = parseMoneda($('#monto_totalp').val());
+        var cuota  = parseMoneda($('#valor_cuotap').val());
 
         if (!monto || !cuotas || isNaN(interes) || !total || !cuota) {
             $('#form-result-prestamo').html(
@@ -1044,11 +1147,21 @@ $(function () {
                     .html('<i class="fas fa-spinner fa-spin mr-1"></i>Guardando...');
         $('#form-result-prestamo').html('');
 
+        /* Enviar valores numéricos planos (sin separadores de miles) */
+        $('#montop').val(monto);
+        $('#monto_totalp').val(total);
+        $('#valor_cuotap').val(cuota);
+        var formData = $(this).serialize();
+        /* Restaurar el formato visual de los campos */
+        $('#montop').val(formatMoneda(monto));
+        $('#monto_totalp').val(formatMoneda(total));
+        $('#valor_cuotap').val(formatMoneda(cuota));
+
         $.ajax({
             url:      BASE_P,
             method:   'POST',
             dataType: 'json',
-            data:     $(this).serialize(),
+            data:     formData,
             success: function (data) {
                 $btn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i>Guardar préstamo');
                 if (data.errors) {
@@ -1165,7 +1278,7 @@ function cargarCuotasDia(fecha) {
                           + c.cuotas_atrasadas + ' atraso(s)</small>'
                         : '';
 
-                    var hoyBadge = ((c.estado === 'C' || c.estado === 'A') && c.fecha_cuota === todayStr)
+                    var hoyBadge = (c.estado === 'C' && c.fecha_cuota === todayStr)
                         ? ' <span class="badge badge-info">Hoy</span>'
                         : '';
 

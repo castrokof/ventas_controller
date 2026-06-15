@@ -198,6 +198,22 @@ window.filtrarPanel = function () {
     $('#panel-no-results').toggle(visible === 0 && $('.cuota-card').length > 0);
 };
 
+/* resetFiltros — inline para evitar caché vieja de calendar.js (PWA).
+   Por defecto el filtro activo es "Pendiente hoy" cuando se está viendo
+   el día de hoy; al navegar a otro día se vuelve a "Todos". */
+window.resetFiltros = function () {
+    var hoy = (typeof todayStr !== 'undefined')
+        ? todayStr
+        : new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Argentina/Buenos_Aires' });
+
+    $('[data-filter]').removeClass('active');
+    var filtroDefault = (selDate === hoy) ? 'HOY' : 'all';
+    $('[data-filter="' + filtroDefault + '"]').addClass('active');
+    $('#panel-search').val('');
+    $('#btn-clear-search').hide();
+    filtrarPanel();
+};
+
 /* rellenarModalPago — inline para evitar caché vieja de calendar.js (PWA).
    #vatraso y #valor_abono deben ser el saldo pendiente de ESTA cuota
    (valor_cuota - valor_cuota_pagada), igual que la vista original, para
@@ -369,17 +385,170 @@ $(function () {
         siguiente();
     }
 
-    /* Badge "Hoy" en cuotas pendientes/atrasadas con vencimiento hoy.
+    /* Cambio masivo de fecha + deshacer selectivo — inline para evitar
+       caché vieja de calendar.js (PWA). */
+    $('#btn-sel-cambiar').off('click').on('click', function () {
+        var n = Object.keys(seleccionIds).length;
+        if (n === 0) return;
+        $('#cf-count').text(n);
+        $('#cf-nueva-fecha').val('');
+        $('#cf-feedback').hide().text('');
+        $('#modal-cambiar-fecha').modal('show');
+    });
+
+    $('#btn-cf-confirmar').off('click').on('click', function () {
+        var nuevaFecha = $('#cf-nueva-fecha').val();
+        if (!nuevaFecha) {
+            $('#cf-feedback').text('Debes seleccionar una fecha.').show();
+            return;
+        }
+        var ids  = Object.keys(seleccionIds).map(Number);
+        var $btn = $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i>Guardando...');
+
+        $.ajax({
+            url:      BASE + '/cambiar-fechas',
+            method:   'POST',
+            dataType: 'json',
+            data: {
+                _token:      $('meta[name="csrf-token"]').attr('content')
+                          || $('input[name="_token"]').first().val(),
+                ids:         ids,
+                nueva_fecha: nuevaFecha
+            },
+            success: function (resp) {
+                if (resp.success) {
+                    var idsActualizados = resp.ids_actualizados || [];
+                    var cambios = idsActualizados.map(function (idd) {
+                        var info = seleccionIds[idd] || {};
+                        return {
+                            idd:           idd,
+                            nombre:        info.nombre || '',
+                            cuota:         info.cuota  || '',
+                            fechaAnterior: info.fechaActual || ''
+                        };
+                    });
+
+                    $('#modal-cambiar-fecha').modal('hide');
+                    selLimpiar();
+                    selMasivo = false;
+                    $('#btn-modo-masivo').removeClass('activo');
+                    if (selDate) cargarCuotasDia(selDate);
+                    if ($('#cal-container').is(':visible')) {
+                        cargarCalendario(calYear, calMonth, selDate);
+                    }
+                    Swal.fire({
+                        icon: 'success',
+                        title: resp.actualizadas + ' cuota(s) actualizadas',
+                        showConfirmButton: false,
+                        timer: 2000
+                    });
+
+                    if (cambios.length) mostrarModalDeshacer(cambios);
+                } else {
+                    $('#cf-feedback').text(resp.msg || 'Error al actualizar.').show();
+                    $btn.prop('disabled', false).html('<i class="fas fa-check mr-1"></i>Aplicar cambio');
+                }
+            },
+            error: function () {
+                $('#cf-feedback').text('Error de red. Intenta de nuevo.').show();
+                $btn.prop('disabled', false).html('<i class="fas fa-check mr-1"></i>Aplicar cambio');
+            }
+        });
+    });
+
+    $('#modal-cambiar-fecha').off('hidden.bs.modal').on('hidden.bs.modal', function () {
+        $('#btn-cf-confirmar').prop('disabled', false)
+            .html('<i class="fas fa-check mr-1"></i>Aplicar cambio');
+        $('#cf-feedback').hide().text('');
+    });
+
+    function mostrarModalDeshacer(cambios) {
+        var html = '';
+        cambios.forEach(function (c) {
+            html += '<div class="form-check df-item mb-2" data-idd="' + c.idd
+                  + '" data-fecha-anterior="' + escHtml(c.fechaAnterior) + '">'
+                  + '  <input type="checkbox" class="form-check-input df-check" id="df-' + c.idd + '">'
+                  + '  <label class="form-check-label" for="df-' + c.idd + '" style="font-size:13px">'
+                  + '    ' + escHtml(c.nombre) + ' · Cuota #' + escHtml(String(c.cuota))
+                  + '    <small class="text-muted d-block">Volver a ' + escHtml(c.fechaAnterior) + '</small>'
+                  + '  </label>'
+                  + '</div>';
+        });
+        $('#df-lista').html(html);
+        $('#btn-df-confirmar').prop('disabled', true)
+            .html('<i class="fas fa-undo mr-1"></i>Deshacer seleccionadas');
+        $('#modal-deshacer-fecha').modal('show');
+    }
+
+    $(document).off('change', '.df-check').on('change', '.df-check', function () {
+        $('#btn-df-confirmar').prop('disabled', $('#df-lista .df-check:checked').length === 0);
+    });
+
+    $('#btn-df-confirmar').off('click').on('click', function () {
+        var cambios = [];
+        $('#df-lista .df-check:checked').each(function () {
+            var $item = $(this).closest('.df-item');
+            cambios.push({ idd: $item.data('idd'), fecha: $item.data('fecha-anterior') });
+        });
+        if (!cambios.length) return;
+
+        var $btn = $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i>Deshaciendo...');
+
+        $.ajax({
+            url:      BASE + '/deshacer-fechas',
+            method:   'POST',
+            dataType: 'json',
+            data: {
+                _token:  $('meta[name="csrf-token"]').attr('content')
+                      || $('input[name="_token"]').first().val(),
+                cambios: cambios
+            },
+            success: function (resp) {
+                if (resp.success) {
+                    $('#df-lista .df-check:checked').each(function () {
+                        $(this).closest('.df-item').remove();
+                    });
+                    $btn.prop('disabled', true).html('<i class="fas fa-undo mr-1"></i>Deshacer seleccionadas');
+                    if (!$('#df-lista .df-item').length) {
+                        $('#modal-deshacer-fecha').modal('hide');
+                    }
+                    if (selDate) cargarCuotasDia(selDate);
+                    if ($('#cal-container').is(':visible')) {
+                        cargarCalendario(calYear, calMonth, selDate);
+                    }
+                    Swal.fire({
+                        icon: 'success',
+                        title: resp.actualizadas + ' cuota(s) revertidas',
+                        showConfirmButton: false,
+                        timer: 1800
+                    });
+                } else {
+                    $btn.prop('disabled', false).html('<i class="fas fa-undo mr-1"></i>Deshacer seleccionadas');
+                    Swal.fire('Error', resp.msg || 'No se pudo deshacer.', 'error');
+                }
+            },
+            error: function () {
+                $btn.prop('disabled', false).html('<i class="fas fa-undo mr-1"></i>Deshacer seleccionadas');
+                Swal.fire('Error', 'Error de red. Intenta de nuevo.', 'error');
+            }
+        });
+    });
+
+    /* Badge "Hoy" solo en cuotas pendientes (C) con vencimiento hoy.
+       Las atrasadas (A) ya no se consideran "de hoy": viven en la pestaña Atrasadas.
        Decora las cards después de cada render (también con calendar.js viejo). */
     function decorarBadgesHoy() {
         var hoy = hoyStr();
         $('#panel-list .cuota-card').each(function () {
             var $c = $(this);
             var e  = $c.data('estado');
-            if ((e === 'C' || e === 'A') && $c.attr('data-fecha') === hoy
+            if (e === 'C' && $c.attr('data-fecha') === hoy
                 && !$c.find('.badge:contains(Hoy)').length) {
                 $c.find('.text-right').first()
                   .append(' <span class="badge badge-info badge-hoy">Hoy</span>');
+            }
+            if (e !== 'C' && $c.attr('data-fecha') === hoy) {
+                $c.find('.badge:contains(Hoy)').remove();
             }
         });
     }
@@ -398,8 +567,18 @@ $(function () {
     /* Cuotas equivalentes a 1 mes según el tipo de pago (la tasa de interés es mensual) */
     var CUOTAS_POR_MES = { Diario: 24, Semanal: 4, Quincenal: 2, Mensual: 1 };
 
+    /* Formato moneda (es-CO: punto como separador de miles) para los campos
+       monto, monto total y valor cuota. */
+    function formatMoneda(num) {
+        num = Math.round(parseFloat(num) || 0);
+        return num ? num.toLocaleString('es-CO') : '';
+    }
+    function parseMoneda(str) {
+        return parseFloat(String(str || '').replace(/[^\d]/g, '')) || 0;
+    }
+
     function recalcularPrestamo() {
-        var monto   = parseFloat($('#montop').val())   || 0;
+        var monto   = parseMoneda($('#montop').val());
         var cuotas  = parseInt($('#cuotas').val(), 10) || 0;
         var interes = parseFloat($('#interes').val())  || 0;
         var tipo    = $('#tipo_pagop').val();
@@ -411,10 +590,16 @@ $(function () {
         var meses = (tipo === 'Mensual' || prorratear) ? cuotas / (CUOTAS_POR_MES[tipo] || 1) : 1;
         var total = monto + (monto * (interes / 100) * meses);
         total = Math.round(total);
-        $('#monto_totalp').val(total);
-        $('#valor_cuotap').val(Math.round(total / cuotas));
+        $('#monto_totalp').val(formatMoneda(total));
+        $('#valor_cuotap').val(formatMoneda(Math.round(total / cuotas)));
         $('#monto_pendientep').val(total);
     }
+
+    /* Formatear #montop con separadores de miles mientras se escribe */
+    $(document).off('input', '#montop').on('input', '#montop', function () {
+        var raw = parseMoneda($(this).val());
+        $(this).val(formatMoneda(raw));
+    });
 
     /* Reemplazar handlers de calendar.js (si quedaron de caché vieja) con versión inline */
     $(document).off('input change', '#montop, #cuotas, #interes, #tipo_pagop, #interes_prorrateado');
@@ -488,11 +673,11 @@ $(function () {
 
     $('#form-prestamo').off('submit').on('submit', function (e) {
         e.preventDefault();
-        var monto  = parseFloat($('#montop').val())   || 0;
+        var monto  = parseMoneda($('#montop').val());
         var cuotas = parseInt($('#cuotas').val(), 10) || 0;
         var interes= parseFloat($('#interes').val());
-        var total  = parseFloat($('#monto_totalp').val()) || 0;
-        var cuota  = parseFloat($('#valor_cuotap').val()) || 0;
+        var total  = parseMoneda($('#monto_totalp').val());
+        var cuota  = parseMoneda($('#valor_cuotap').val());
         if (!monto || !cuotas || isNaN(interes) || !total || !cuota) {
             $('#form-result-prestamo').html(
                 '<div class="alert alert-warning py-2"><i class="fas fa-exclamation-triangle mr-1"></i>'
@@ -503,11 +688,22 @@ $(function () {
         var $btn = $(this).find('[type=submit]').prop('disabled', true)
                     .html('<i class="fas fa-spinner fa-spin mr-1"></i>Guardando...');
         $('#form-result-prestamo').html('');
+
+        /* Enviar valores numéricos planos (sin separadores de miles) */
+        $('#montop').val(monto);
+        $('#monto_totalp').val(total);
+        $('#valor_cuotap').val(cuota);
+        var data = $(this).serialize();
+        /* Restaurar el formato visual de los campos */
+        $('#montop').val(formatMoneda(monto));
+        $('#monto_totalp').val(formatMoneda(total));
+        $('#valor_cuotap').val(formatMoneda(cuota));
+
         $.ajax({
             url:      BASE_PRESTAMO,
             method:   'POST',
             dataType: 'json',
-            data:     $(this).serialize(),
+            data:     data,
             success: function (data) {
                 $btn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i>Guardar préstamo');
                 if (data.errors) {
@@ -864,8 +1060,8 @@ $(function () {
 </div>
 
 <div class="panel-filters">
-  <button class="filter-btn fb-all active" data-filter="all">Todos</button>
-  <button class="filter-btn fb-hoy"         data-filter="HOY">
+  <button class="filter-btn fb-all" data-filter="all">Todos</button>
+  <button class="filter-btn fb-hoy active" data-filter="HOY">
     <i class="fas fa-calendar-day mr-1"></i>Pendiente hoy
   </button>
   <button class="filter-btn fb-pend"        data-filter="C">Pendiente</button>
@@ -1150,7 +1346,39 @@ $(function () {
           <i class="fas fa-check mr-1"></i>Aplicar
         </button>
       <div class="modal-footer py-2">
-        
+
+      </div>
+    </div>
+  </div>
+</div>
+
+
+{{-- ════════════════════════════════════════════════════════ --}}
+{{-- MODAL: Deshacer cambio masivo de fecha de cuota         --}}
+{{-- ════════════════════════════════════════════════════════ --}}
+<div class="modal fade" id="modal-deshacer-fecha" tabindex="-1"
+     role="dialog" aria-labelledby="modal-df-titulo" aria-modal="true">
+  <div class="modal-dialog modal-sm" role="document">
+    <div class="modal-content">
+      <div class="modal-header" style="background:#17a2b8;color:#fff">
+        <h6 class="modal-title font-weight-bold" id="modal-df-titulo">
+          <i class="fas fa-undo mr-1"></i> Cuotas actualizadas
+        </h6>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar" style="color:#fff">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-2" style="font-size:13px">
+          Marca las cuotas que NO quieras dejar con la nueva fecha para devolverlas a su fecha anterior.
+        </p>
+        <div id="df-lista" style="max-height:260px;overflow-y:auto"></div>
+      </div>
+      <div class="modal-footer py-2 justify-content-between">
+        <button type="button" class="btn btn-sm btn-secondary" data-dismiss="modal">Listo</button>
+        <button type="button" id="btn-df-confirmar" class="btn btn-sm btn-info font-weight-bold" disabled>
+          <i class="fas fa-undo mr-1"></i>Deshacer seleccionadas
+        </button>
       </div>
     </div>
   </div>

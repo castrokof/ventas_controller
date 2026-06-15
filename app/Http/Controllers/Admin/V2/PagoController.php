@@ -900,7 +900,41 @@ class PagoController extends Controller
             ->whereIn('idd', $validIds)
             ->update(['fecha_cuota' => $nuevaFecha, 'updated_at' => now()]);
 
-        return response()->json(['success' => true, 'actualizadas' => count($validIds)]);
+        return response()->json(['success' => true, 'actualizadas' => count($validIds), 'ids_actualizados' => $validIds]);
+    }
+
+    /**
+     * Revierte la fecha_cuota de una o varias cuotas a su fecha anterior
+     * (deshacer selectivo de un cambio masivo de fechas).
+     * POST /admin/v2/pago-card/deshacer-fechas
+     */
+    public function deshacerFechasMasivo(Request $request): JsonResponse
+    {
+        $uid     = $request->session()->get('usuario_id');
+        $cambios = (array) ($request->cambios ?? []);
+
+        $idsValidos = DB::table('detalle_prestamo')
+            ->join('prestamo', 'detalle_prestamo.prestamo_id', '=', 'prestamo.idp')
+            ->where('prestamo.usuario_id', $uid)
+            ->whereIn('detalle_prestamo.idd', array_map(fn ($c) => (int) ($c['idd'] ?? 0), $cambios))
+            ->whereIn('detalle_prestamo.estado', ['C', 'A'])
+            ->whereNull('prestamo.delete_at')
+            ->pluck('detalle_prestamo.idd')
+            ->toArray();
+
+        $actualizadas = 0;
+        foreach ($cambios as $c) {
+            $idd   = (int) ($c['idd'] ?? 0);
+            $fecha = $c['fecha'] ?? '';
+            if (!in_array($idd, $idsValidos) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) {
+                continue;
+            }
+            DB::table('detalle_prestamo')->where('idd', $idd)
+                ->update(['fecha_cuota' => $fecha, 'updated_at' => now()]);
+            $actualizadas++;
+        }
+
+        return response()->json(['success' => true, 'actualizadas' => $actualizadas]);
     }
 
     /**
