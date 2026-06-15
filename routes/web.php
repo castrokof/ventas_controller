@@ -273,6 +273,7 @@ Route::prefix('admin/v2')
     Route::get('pago-card/calendario',    'PagoController@calendario')       ->name('pago_card.calendario');
     Route::get('pago-card/dia',           'PagoController@cuotasDia')        ->name('pago_card.dia');
     Route::post('pago-card/cambiar-fechas','PagoController@cambiarFechasMasivo')->name('pago_card.cambiar_fechas');
+    Route::post('pago-card/deshacer-fechas','PagoController@deshacerFechasMasivo')->name('pago_card.deshacer_fechas');
     Route::get('pago-card/prestamos',     'PagoController@listaPrestamos')    ->name('pago_card.prestamos');
     Route::get('pago-card/cuotas/{idp}',  'PagoController@cuotasCalendario')  ->name('pago_card.cuotas_cal');
 
