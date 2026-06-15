@@ -113,6 +113,13 @@ body.sel-masivo-on { padding-bottom:62px; }
     .barra-acciones .btn   { padding:4px 8px; font-size:12px; }
 }
 
+/* ── Modal deshacer cambios de fecha: asegurar que el footer
+   (botón "Deshacer seleccionadas") siempre quede visible aunque
+   la lista de cuotas sea larga ──────────────────────────────── */
+#modal-deshacer-fecha .modal-content { max-height:90vh; overflow:hidden; }
+#modal-deshacer-fecha .modal-body    { overflow-y:auto; }
+#modal-deshacer-fecha .modal-footer  { flex-shrink:0; }
+
 /* ── Modal cuotas del préstamo ─────────────────────── */
 .cc-info-link { cursor:pointer; }
 .cc-info-link:hover .cc-name { color:#6366f1; text-decoration:underline; }
@@ -444,7 +451,13 @@ $(function () {
                         timer: 2000
                     });
 
-                    if (cambios.length) mostrarModalDeshacer(cambios);
+                    if (cambios.length) {
+                        /* esperar a que termine la transición de cierre del modal
+                           anterior para evitar conflictos de backdrop/z-index */
+                        $('#modal-cambiar-fecha').one('hidden.bs.modal', function () {
+                            mostrarModalDeshacer(cambios);
+                        });
+                    }
                 } else {
                     $('#cf-feedback').text(resp.msg || 'Error al actualizar.').show();
                     $btn.prop('disabled', false).html('<i class="fas fa-check mr-1"></i>Aplicar cambio');
