@@ -824,7 +824,13 @@ $(function () {
                         timer: 2000
                     });
 
-                    if (cambios.length) mostrarModalDeshacer(cambios);
+                    if (cambios.length) {
+                        /* esperar a que termine la transición de cierre del modal
+                           anterior para evitar conflictos de backdrop/z-index */
+                        $('#modal-cambiar-fecha').one('hidden.bs.modal', function () {
+                            mostrarModalDeshacer(cambios);
+                        });
+                    }
                 } else {
                     $('#cf-feedback').text(resp.msg || 'Error al actualizar.').show();
                     $btn.prop('disabled', false).html('<i class="fas fa-check mr-1"></i>Aplicar cambio');
