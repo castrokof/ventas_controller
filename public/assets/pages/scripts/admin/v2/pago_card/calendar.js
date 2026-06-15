@@ -66,6 +66,7 @@ function gpsQueryString() {
 /* ── Selección masiva ───────────────────────────────────────────────────────── */
 var selMasivo    = false;
 var seleccionIds = {};
+var historialCambiosFecha = [];
 
 /* ── Panel préstamos ────────────────────────────────────────────────────────── */
 var prstData    = [];
@@ -843,9 +844,15 @@ $(function () {
     });
 
     /* ── Deshacer selectivo del cambio masivo de fechas ──────────────────── */
-    function mostrarModalDeshacer(cambios) {
+    function actualizarBtnDeshacer() {
+        var n = historialCambiosFecha.length;
+        $('#badge-deshacer-fecha').text(n);
+        $('#btn-deshacer-fecha').toggle(n > 0);
+    }
+
+    function renderModalDeshacer() {
         var html = '';
-        cambios.forEach(function (c) {
+        historialCambiosFecha.forEach(function (c) {
             html += '<div class="form-check df-item mb-2" data-idd="' + c.idd
                   + '" data-fecha-anterior="' + escHtml(c.fechaAnterior) + '">'
                   + '  <input type="checkbox" class="form-check-input df-check" id="df-' + c.idd + '">'
@@ -860,6 +867,25 @@ $(function () {
             .html('<i class="fas fa-undo mr-1"></i>Deshacer seleccionadas');
         $('#modal-deshacer-fecha').modal('show');
     }
+
+    function mostrarModalDeshacer(cambios) {
+        cambios.forEach(function (c) {
+            var existente = historialCambiosFecha.find(function (h) { return h.idd === c.idd; });
+            if (existente) {
+                existente.nombre = c.nombre;
+                existente.cuota  = c.cuota;
+            } else {
+                historialCambiosFecha.push(c);
+            }
+        });
+        actualizarBtnDeshacer();
+        renderModalDeshacer();
+    }
+
+    $('#btn-deshacer-fecha').on('click', function () {
+        if (!historialCambiosFecha.length) return;
+        renderModalDeshacer();
+    });
 
     $(document).on('change', '.df-check', function () {
         $('#btn-df-confirmar').prop('disabled', $('#df-lista .df-check:checked').length === 0);
@@ -886,6 +912,12 @@ $(function () {
             },
             success: function (resp) {
                 if (resp.success) {
+                    var idsRevertidos = cambios.map(function (c) { return c.idd; });
+                    historialCambiosFecha = historialCambiosFecha.filter(function (h) {
+                        return idsRevertidos.indexOf(h.idd) === -1;
+                    });
+                    actualizarBtnDeshacer();
+
                     $('#df-lista .df-check:checked').each(function () {
                         $(this).closest('.df-item').remove();
                     });
