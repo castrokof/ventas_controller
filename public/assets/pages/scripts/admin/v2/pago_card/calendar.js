@@ -1213,8 +1213,15 @@ $(function () {
                 cargarListaPrestamos();
                 Swal.fire({ icon: 'success', title: 'Préstamo creado', showConfirmButton: false, timer: 1800 });
             },
-            error: function () {
+            error: function (xhr) {
                 $btn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i>Guardar préstamo');
+                var errores = xhr.responseJSON && xhr.responseJSON.errors;
+                if (errores) {
+                    var h = '<div class="alert alert-danger py-2"><ul class="mb-0">';
+                    errores.forEach(function (err) { h += '<li>' + err + '</li>'; });
+                    $('#form-result-prestamo').html(h + '</ul></div>');
+                    return;
+                }
                 $('#form-result-prestamo').html(
                     '<div class="alert alert-danger py-2"><i class="fas fa-times-circle mr-1"></i>Error al guardar. Intenta de nuevo.</div>'
                 );

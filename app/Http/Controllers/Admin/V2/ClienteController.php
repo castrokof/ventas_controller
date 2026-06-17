@@ -78,6 +78,8 @@ class ClienteController extends Controller
             ->where('id', '=', $id_usuario)
             ->pluck('usuario', 'id')
             ->toArray();
+        $usuarioscp = $usuarios;
+        $clientes   = Cliente::whereIn('usuario_id', $uids)->get();
 
         $datas = collect(); // evita variable indefinida en la vista
 
@@ -117,7 +119,7 @@ class ClienteController extends Controller
                 ->make(true);
         }
 
-        return view('admin.v2.cliente.index', compact('usuarios', 'datas'));
+        return view('admin.v2.cliente.index', compact('usuarios', 'usuarioscp', 'clientes', 'datas'));
     }
 
     /**

@@ -3,17 +3,11 @@
  *
  * JS modernizado para el módulo Préstamos V2.
  *
- * Mejoras respecto al inline original:
- *  1. Event handler leak: la versión original hacía
- *       $('#btn-crear').click(function(){ $('#form').on('submit', ...) })
- *     lo que añadía un nuevo listener en cada apertura del modal.
- *     Aquí el listener de submit se registra UNA SOLA VEZ.
- *  2. const / let en lugar de var.
- *  3. La función calcularMontos() usa la misma fórmula que el original
- *     pero está documentada y es más legible.
- *  4. La tabla muestra un badge de estado en lugar de colorear la fila
- *     vía inline style; las clases CSS se gestionan en la hoja de estilos.
- *  5. Los IDs de los botones en los modales son descriptivos y únicos.
+ * El formulario de "crear préstamo" es el MISMO partial que usa
+ * pago-card V2 (resources/views/admin/v2/pago_card/form-prestamo.blade.php),
+ * incluido aquí dos veces (crear / refinanciar) con un id-suffix distinto
+ * para evitar ids duplicados en el DOM. Por eso los cálculos se hacen de
+ * forma "scoped" (por modal), nunca con selectores de id fijos.
  */
 
 /* ── Idioma español para DataTables ─────────────────────────────────────── */
@@ -44,51 +38,76 @@ let tablaIniciada = false;
 /* Saldo pendiente del préstamo que se está refinanciando (0 cuando no hay modal abierto) */
 let refiPendiente = 0;
 
+/* ── Formato de moneda (idéntico a pago-card V2) ──────────────────────────── */
+function formatMoneda(num) {
+    num = Math.round(parseFloat(num) || 0);
+    return num ? num.toLocaleString('es-CO') : '';
+}
+function parseMoneda(str) {
+    return parseFloat(String(str || '').replace(/[^\d]/g, '')) || 0;
+}
+
 /* ── Cálculo de montos ──────────────────────────────────────────────────── */
 /* Cuotas equivalentes a 1 mes según el tipo de pago (la tasa de interés es mensual) */
 const CUOTAS_POR_MES = { Diario: 24, Semanal: 4, Quincenal: 2, Mensual: 1 };
 
 /**
- * Recalcula monto_total y valor_cuota según el tipo de pago.
+ * Recalcula monto_total y valor_cuota según el tipo de pago, dentro del
+ * modal indicado por $scope (jQuery). Así el cálculo nunca se mezcla entre
+ * el formulario de "crear préstamo" y el de "refinanciar" aunque comparten
+ * el mismo partial.
  *
  * Por defecto:
  *   Mensual: el interés (mensual) se aplica por cada cuota.
  *   Diario / Semanal / Quincenal: el interés se aplica una sola vez.
  *
- * Si se activa "Prorratear interés mensual según frecuencia"
- * (#interes_prorrateado_p), la tasa mensual se reparte según cuántas
- * cuotas del tipo seleccionado equivalen a un mes:
+ * Si se activa "Prorratear interés mensual según frecuencia", la tasa
+ * mensual se reparte según cuántas cuotas del tipo seleccionado equivalen
+ * a un mes:
  *     total = monto + monto * (interes/100) * (cuotas / cuotasPorMes)
- *
- * Esto hace que, para una misma tasa, 3 cuotas mensuales, 6 quincenales
- * y 12 semanales (todas equivalentes a 3 meses) den el mismo total.
  */
-function calcularMontos() {
-    const monto    = parseFloat($('#monto_p').val())    || 0;
-    const cuotas   = parseInt($('#cuotas_p').val())     || 0;
-    const interes  = parseFloat($('#interes_p').val())  || 0;
-    const tipoPago = $('#tipo_pago_p').val();
-    const prorratear = $('#interes_prorrateado_p').is(':checked');
+function calcularMontos($scope) {
+    const $monto      = $scope.find('.prestamo-montop');
+    const $cuotas     = $scope.find('.prestamo-cuotas');
+    const $interes    = $scope.find('.prestamo-interes');
+    const $tipoPago   = $scope.find('.prestamo-tipo-pagop');
+    const $total      = $scope.find('.prestamo-monto-totalp');
+    const $valorCuota = $scope.find('.prestamo-valor-cuotap');
+    const $pendiente  = $scope.find('.prestamo-monto-pendientep');
+    const prorratear  = $scope.find('.prestamo-interes-prorrateado').is(':checked');
 
-    if (!monto || !cuotas || !tipoPago) return;
+    const monto    = parseMoneda($monto.val());
+    const cuotas   = parseInt($cuotas.val(), 10) || 0;
+    const interes  = parseFloat($interes.val()) || 0;
+    const tipoPago = $tipoPago.val();
+
+    if (!monto || !cuotas || !tipoPago) {
+        $total.val('');
+        $valorCuota.val('');
+        $pendiente.val('');
+        return;
+    }
 
     const meses = (tipoPago === 'Mensual' || prorratear) ? cuotas / (CUOTAS_POR_MES[tipoPago] || 1) : 1;
     const total = Math.round(monto + monto * (interes / 100) * meses);
-
     const valorCuota = Math.round(total / cuotas);
 
-    $('#monto_total_p').val(total);
-    $('#monto_pendiente_p').val(total);
-    $('#valor_cuota_p').val(valorCuota);
+    $total.val(formatMoneda(total));
+    $valorCuota.val(formatMoneda(valorCuota));
+    $pendiente.val(total);
 
     // Actualizar "dinero a entregar" en modal de refinanciamiento
-    if (refiPendiente > 0) {
-        const entrega = monto - refiPendiente;
-        $('#refi_entrega_label').text('$' + Math.round(entrega).toLocaleString('es-CO'));
-        if (entrega > 0) {
-            $('#refi-entrega-row').show().removeClass('alert-warning').addClass('alert-success');
-        } else if (entrega < 0) {
-            $('#refi-entrega-row').show().removeClass('alert-success').addClass('alert-warning');
+    if ($scope.is('#modal-refinanciar')) {
+        if (refiPendiente > 0) {
+            const entrega = monto - refiPendiente;
+            $('#refi_entrega_label').text('$' + Math.round(entrega).toLocaleString('es-CO'));
+            if (entrega > 0) {
+                $('#refi-entrega-row').show().removeClass('alert-warning').addClass('alert-success');
+            } else if (entrega < 0) {
+                $('#refi-entrega-row').show().removeClass('alert-success').addClass('alert-warning');
+            } else {
+                $('#refi-entrega-row').hide();
+            }
         } else {
             $('#refi-entrega-row').hide();
         }
@@ -162,6 +181,18 @@ function iniciarTabla() {
     return dt;
 }
 
+/** Pinta los mensajes de error de validación (HTTP 422) en el contenedor indicado. */
+function mostrarErroresValidacion($contenedor, xhr) {
+    const errores = (xhr.responseJSON && xhr.responseJSON.errors) || null;
+    if (errores) {
+        const html = errores.map(e => `<div class="alert alert-danger py-1 mb-1">${e}</div>`).join('');
+        $contenedor.html(html);
+        return;
+    }
+    const msg = (xhr.responseJSON && xhr.responseJSON.message) || 'Error inesperado. Intente de nuevo.';
+    $contenedor.html(`<div class="alert alert-danger py-1 mb-1">${msg}</div>`);
+}
+
 /* ── Document ready ─────────────────────────────────────────────────────── */
 $(function () {
 
@@ -180,15 +211,32 @@ $(function () {
     // ── Iniciar DataTable ────────────────────────────────────────────────────
     iniciarTabla();
 
-    // ── Recalcular montos en cada cambio de inputs ───────────────────────────
-    $('#monto_p, #cuotas_p, #interes_p, #tipo_pago_p, #interes_prorrateado_p').on('change input', calcularMontos);
+    // ── Recalcular montos en cada cambio de inputs (scoped por modal) ────────
+    $(document).on('input change',
+        '#modal-crear-prestamo .prestamo-montop, #modal-crear-prestamo .prestamo-cuotas, ' +
+        '#modal-crear-prestamo .prestamo-interes, #modal-crear-prestamo .prestamo-tipo-pagop, ' +
+        '#modal-crear-prestamo .prestamo-interes-prorrateado',
+        function () { calcularMontos($('#modal-crear-prestamo')); }
+    );
+    $(document).on('input change',
+        '#modal-refinanciar .prestamo-montop, #modal-refinanciar .prestamo-cuotas, ' +
+        '#modal-refinanciar .prestamo-interes, #modal-refinanciar .prestamo-tipo-pagop, ' +
+        '#modal-refinanciar .prestamo-interes-prorrateado',
+        function () { calcularMontos($('#modal-refinanciar')); }
+    );
+
+    // ── Formato de miles en vivo para el campo "Monto" (igual que pago-card) ─
+    $(document).on('input', '.prestamo-montop', function () {
+        const raw = parseMoneda($(this).val());
+        $(this).val(formatMoneda(raw));
+    });
 
     // ── Abrir modal crear ────────────────────────────────────────────────────
     $('#btn-crear-prestamo').on('click', function () {
         refiPendiente = 0; // asegurar que calcularMontos no toque el bloque de entrega
         $('#form-crear-prestamo')[0].reset();
         $('#form-result-crear').html('');
-        $('#monto_total_p, #valor_cuota_p, #monto_pendiente_p').val('');
+        $('#modal-crear-prestamo .prestamo-monto-totalp, #modal-crear-prestamo .prestamo-valor-cuotap, #modal-crear-prestamo .prestamo-monto-pendientep').val('');
         $('#modal-crear-prestamo .select2bs4').val(null).trigger('change');
         $('#modal-crear-prestamo').modal('show');
     });
@@ -198,6 +246,8 @@ $(function () {
     //      acumulando N listeners con cada apertura del modal.
     $('#form-crear-prestamo').on('submit', function (e) {
         e.preventDefault();
+
+        const $form = $(this);
 
         Swal.fire({
             title: '¿Crear el préstamo?',
@@ -212,17 +262,29 @@ $(function () {
             $('#loader-crear').addClass('active');
             $('#btn-guardar-prestamo').prop('disabled', true);
 
+            // Enviar valores numéricos planos (sin separadores de miles)
+            const $monto = $form.find('.prestamo-montop');
+            const $total = $form.find('.prestamo-monto-totalp');
+            const $cuota = $form.find('.prestamo-valor-cuotap');
+            const montoPlano = parseMoneda($monto.val());
+            const totalPlano = parseMoneda($total.val());
+            const cuotaPlano = parseMoneda($cuota.val());
+            $monto.val(montoPlano);
+            $total.val(totalPlano);
+            $cuota.val(cuotaPlano);
+            const formData = $form.serialize();
+            $monto.val(formatMoneda(montoPlano));
+            $total.val(formatMoneda(totalPlano));
+            $cuota.val(formatMoneda(cuotaPlano));
+
             $.ajax({
                 url:      window.V2_GUARDAR_URL,
                 method:   'POST',
-                data:     $(this).serialize(),
+                data:     formData,
                 dataType: 'json',
                 success(data) {
                     if (data.errors) {
-                        const html = data.errors
-                            .map(e => `<div class="alert alert-danger py-1 mb-1">${e}</div>`)
-                            .join('');
-                        $('#form-result-crear').html(html);
+                        mostrarErroresValidacion($('#form-result-crear'), { responseJSON: data });
                         return;
                     }
 
@@ -237,10 +299,7 @@ $(function () {
                     });
                 },
                 error(xhr) {
-                    const msg = xhr.responseJSON?.message || 'Error inesperado. Intente de nuevo.';
-                    $('#form-result-crear').html(
-                        `<div class="alert alert-danger py-1 mb-1">${msg}</div>`
-                    );
+                    mostrarErroresValidacion($('#form-result-crear'), xhr);
                 },
                 complete() {
                     $('#loader-crear').removeClass('active');
@@ -326,18 +385,22 @@ $(function () {
     // ── Abrir modal refinanciar ──────────────────────────────────────────
     $(document).on('click', '.refinanciar', function () {
         const id = $(this).data('id');
+        const $modal = $('#modal-refinanciar');
+
         $('#form-refinanciar')[0].reset();
         $('#form-result-refi').html('');
         $('#refi-entrega-row').hide();
+        $modal.find('.prestamo-monto-totalp, .prestamo-valor-cuotap, .prestamo-monto-pendientep').val('');
         refiPendiente = 0;
+
         $.get(window.V2_BASE_URL + '/prestamo/' + id + '/refinanciar', function (data) {
             if (!data.result || !data.result.length) {
                 Swal.fire('Error', 'No se pudo cargar el préstamo.', 'error');
                 return;
             }
-            const r             = data.result[0];
-            const cuotasRestantes = data.result.length; // cuotas pendientes/atrasadas
-            refiPendiente       = parseFloat(r.monto_pendiente) || 0;
+            const r                = data.result[0];
+            const cuotasRestantes  = data.result.length; // cuotas pendientes/atrasadas
+            refiPendiente          = parseFloat(r.monto_pendiente) || 0;
 
             $('#refi-idp').text('#' + r.idp);
             $('#refi_prestamo_id').val(r.idp);
@@ -348,15 +411,18 @@ $(function () {
             $('#refi_saldo_label').text('$' + refiPendiente.toLocaleString('es-CO'));
             // Pre-llenar valor abono con el saldo total para cerrar el préstamo
             $('#refi_valor_abono').val(refiPendiente);
-            // Pre-llenar campos del nuevo préstamo
-            $('#cliente_id_p').val(r.cliente_id).trigger('change');
-            $('#tipo_pago_p').val(r.tipo_pago).trigger('change');
-            $('#cuotas_p').val(cuotasRestantes);
-            $('#interes_p').val(r.interes);
-            $('#usuario_id_p').val(r.usuario_id).trigger('change');
-            // Recalcular totales si ya hay monto (ej. al reabrir el modal)
-            calcularMontos();
-            $('#modal-refinanciar').modal('show');
+
+            // Pre-llenar campos del nuevo préstamo (ids con sufijo "Refi")
+            $modal.find('#cliente_idRefi').val(r.cliente_id).trigger('change');
+            $modal.find('#tipo_pagopRefi').val(r.tipo_pago).trigger('change');
+            $modal.find('#cuotasRefi').val(cuotasRestantes);
+            $modal.find('#interesRefi').val(r.interes);
+            $modal.find('#usuario_idpRefi').val(r.usuario_id);
+
+            // Recalcular totales del nuevo préstamo con los valores pre-llenados
+            calcularMontos($modal);
+
+            $modal.modal('show');
         }).fail(function () {
             Swal.fire('Error', 'No se pudo cargar el préstamo.', 'error');
         });
@@ -365,6 +431,8 @@ $(function () {
     // ── Envío del formulario de refinanciamiento ─────────────────────────
     $('#form-refinanciar').on('submit', function (e) {
         e.preventDefault();
+        const $form = $(this);
+
         Swal.fire({
             title: '¿Refinanciar el préstamo?',
             text: 'Se cerrará el préstamo actual y se creará uno nuevo.',
@@ -376,15 +444,30 @@ $(function () {
             if (!result.value) return;
             $('#loader-refi').addClass('active');
             $('#btn-guardar-refi').prop('disabled', true);
+
+            // Enviar valores numéricos planos del nuevo préstamo (sin separadores de miles)
+            const $monto = $form.find('.prestamo-montop');
+            const $total = $form.find('.prestamo-monto-totalp');
+            const $cuota = $form.find('.prestamo-valor-cuotap');
+            const montoPlano = parseMoneda($monto.val());
+            const totalPlano = parseMoneda($total.val());
+            const cuotaPlano = parseMoneda($cuota.val());
+            $monto.val(montoPlano);
+            $total.val(totalPlano);
+            $cuota.val(cuotaPlano);
+            const formData = $form.serialize();
+            $monto.val(formatMoneda(montoPlano));
+            $total.val(formatMoneda(totalPlano));
+            $cuota.val(formatMoneda(cuotaPlano));
+
             $.ajax({
                 url:      window.V2_REFI_URL,
                 method:   'POST',
-                data:     $(this).serialize(),
+                data:     formData,
                 dataType: 'json',
                 success(data) {
                     if (data.errors) {
-                        const html = data.errors.map(e => `<div class="alert alert-danger py-1 mb-1">${e}</div>`).join('');
-                        $('#form-result-refi').html(html);
+                        mostrarErroresValidacion($('#form-result-refi'), { responseJSON: data });
                         return;
                     }
                     $('#modal-refinanciar').modal('hide');
@@ -392,8 +475,7 @@ $(function () {
                     Swal.fire({ icon: 'success', title: 'Préstamo refinanciado correctamente', timer: 1600, showConfirmButton: false });
                 },
                 error(xhr) {
-                    const msg = xhr.responseJSON?.message || 'Error inesperado.';
-                    $('#form-result-refi').html(`<div class="alert alert-danger py-1 mb-1">${msg}</div>`);
+                    mostrarErroresValidacion($('#form-result-refi'), xhr);
                 },
                 complete() {
                     $('#loader-refi').removeClass('active');

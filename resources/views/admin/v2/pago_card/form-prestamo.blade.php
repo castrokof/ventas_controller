@@ -1,15 +1,18 @@
 {{-- resources/views/admin/v2/pago_card/form-prestamo.blade.php --}}
 {{-- IMPORTANTE: los name= NO cambian para compatibilidad con backend --}}
+{{-- $idSuffix permite incluir este formulario más de una vez en la misma página
+     (p.ej. crear + refinanciar) sin que los id= se dupliquen en el DOM --}}
+@php($idSuffix = $idSuffix ?? '')
 
 {{-- ── Fila 1: cliente + monto + tipo + cuotas + interés ──── --}}
 <div class="form-group row">
 
   <div class="col-12 col-md-4">
-    <label for="cliente_id" class="font-weight-bold requerido">
+    <label for="cliente_id{{ $idSuffix }}" class="font-weight-bold requerido">
       <i class="fas fa-user fa-xs mr-1 text-muted" aria-hidden="true"></i>
       Cliente <span class="text-danger" aria-hidden="true">*</span>
     </label>
-    <select name="cliente_id" id="cliente_id"
+    <select name="cliente_id" id="cliente_id{{ $idSuffix }}"
             class="form-control form-control-sm select2bs4"
             style="width:100%"
             required aria-required="true"
@@ -24,7 +27,7 @@
   </div>
 
   <div class="col-6 col-md-2">
-    <label for="montop" class="font-weight-bold requerido">
+    <label for="montop{{ $idSuffix }}" class="font-weight-bold requerido">
       <i class="fas fa-dollar-sign fa-xs mr-1 text-muted" aria-hidden="true"></i>
       Monto <span class="text-danger" aria-hidden="true">*</span>
     </label>
@@ -32,8 +35,8 @@
       <div class="input-group-prepend">
         <span class="input-group-text" aria-hidden="true">$</span>
       </div>
-      <input type="text" inputmode="numeric" name="monto" id="montop"
-             class="form-control font-weight-bold"
+      <input type="text" inputmode="numeric" name="monto" id="montop{{ $idSuffix }}"
+             class="form-control font-weight-bold prestamo-montop"
              style="font-size:1.15rem"
              value="{{ old('monto', $data->monto ?? '') }}"
              required aria-required="true"
@@ -44,12 +47,12 @@
   </div>
 
   <div class="col-6 col-md-2">
-    <label for="tipo_pagop" class="font-weight-bold requerido">
+    <label for="tipo_pagop{{ $idSuffix }}" class="font-weight-bold requerido">
       <i class="fas fa-clock fa-xs mr-1 text-muted" aria-hidden="true"></i>
       Tipo de pago <span class="text-danger" aria-hidden="true">*</span>
     </label>
-    <select name="tipo_pago" id="tipo_pagop"
-            class="form-control form-control-sm select2bs4"
+    <select name="tipo_pago" id="tipo_pagop{{ $idSuffix }}"
+            class="form-control form-control-sm select2bs4 prestamo-tipo-pagop"
             style="width:100%"
             required aria-required="true"
             aria-label="Frecuencia de pago">
@@ -62,12 +65,12 @@
   </div>
 
   <div class="col-6 col-md-2">
-    <label for="cuotas" class="font-weight-bold requerido">
+    <label for="cuotas{{ $idSuffix }}" class="font-weight-bold requerido">
       <i class="fas fa-list-ol fa-xs mr-1 text-muted" aria-hidden="true"></i>
       Cuotas <span class="text-danger" aria-hidden="true">*</span>
     </label>
-    <input type="number" name="cuotas" id="cuotas"
-           class="form-control form-control-sm"
+    <input type="number" name="cuotas" id="cuotas{{ $idSuffix }}"
+           class="form-control form-control-sm prestamo-cuotas"
            value="{{ old('cuotas', $data->cuotas ?? '') }}"
            min="1" step="1" required aria-required="true"
            aria-label="Número de cuotas"
@@ -75,13 +78,13 @@
   </div>
 
   <div class="col-6 col-md-2">
-    <label for="interes" class="font-weight-bold requerido">
+    <label for="interes{{ $idSuffix }}" class="font-weight-bold requerido">
       <i class="fas fa-percentage fa-xs mr-1 text-muted" aria-hidden="true"></i>
       Interés <span class="text-danger" aria-hidden="true">*</span>
     </label>
     <div class="input-group input-group-sm">
-      <input type="number" name="interes" id="interes"
-             class="form-control"
+      <input type="number" name="interes" id="interes{{ $idSuffix }}"
+             class="form-control prestamo-interes"
              value="{{ old('interes', $data->interes ?? '') }}"
              min="0" step="any" required aria-required="true"
              aria-label="Porcentaje de interés"
@@ -98,7 +101,7 @@
 <div class="form-group row">
 
   <div class="col-6 col-md-3">
-    <label for="monto_totalp" class="font-weight-bold">
+    <label for="monto_totalp{{ $idSuffix }}" class="font-weight-bold">
       <i class="fas fa-calculator fa-xs mr-1 text-muted" aria-hidden="true"></i>
       Monto total
     </label>
@@ -106,8 +109,8 @@
       <div class="input-group-prepend">
         <span class="input-group-text" aria-hidden="true">$</span>
       </div>
-      <input type="text" name="monto_total" id="monto_totalp"
-             class="form-control bg-light font-weight-bold"
+      <input type="text" name="monto_total" id="monto_totalp{{ $idSuffix }}"
+             class="form-control bg-light font-weight-bold prestamo-monto-totalp"
              style="font-size:1.15rem"
              value="{{ old('monto_total', $data->monto_total ?? '') }}"
              readonly
@@ -116,7 +119,7 @@
   </div>
 
   <div class="col-6 col-md-3">
-    <label for="valor_cuotap" class="font-weight-bold">
+    <label for="valor_cuotap{{ $idSuffix }}" class="font-weight-bold">
       <i class="fas fa-coins fa-xs mr-1 text-muted" aria-hidden="true"></i>
       Valor por cuota
     </label>
@@ -124,8 +127,8 @@
       <div class="input-group-prepend">
         <span class="input-group-text" aria-hidden="true">$</span>
       </div>
-      <input type="text" name="valor_cuota" id="valor_cuotap"
-             class="form-control bg-light font-weight-bold"
+      <input type="text" name="valor_cuota" id="valor_cuotap{{ $idSuffix }}"
+             class="form-control bg-light font-weight-bold prestamo-valor-cuotap"
              style="font-size:1.15rem"
              value="{{ old('valor_cuota', $data->valor_cuota ?? '') }}"
              readonly
@@ -134,11 +137,11 @@
   </div>
 
   <div class="col-6 col-md-3">
-    <label for="fecha_inicial" class="font-weight-bold requerido">
+    <label for="fecha_inicial{{ $idSuffix }}" class="font-weight-bold requerido">
       <i class="fas fa-calendar-alt fa-xs mr-1 text-muted" aria-hidden="true"></i>
       Fecha inicial <span class="text-danger" aria-hidden="true">*</span>
     </label>
-    <input type="date" name="fecha_inicial" id="fecha_inicial"
+    <input type="date" name="fecha_inicial" id="fecha_inicial{{ $idSuffix }}"
            class="form-control form-control-sm"
            value="{{ old('fecha_inicial', $data->fecha_inicial ?? '') }}"
            required aria-required="true"
@@ -146,11 +149,11 @@
   </div>
 
   <div class="col-6 col-md-3">
-    <label for="usuario_idp" class="font-weight-bold requerido">
+    <label for="usuario_idp{{ $idSuffix }}" class="font-weight-bold requerido">
       <i class="fas fa-user-tie fa-xs mr-1 text-muted" aria-hidden="true"></i>
       Usuario <span class="text-danger" aria-hidden="true">*</span>
     </label>
-    <select id="usuario_idp_display"
+    <select id="usuario_idp_display{{ $idSuffix }}"
             class="form-control form-control-sm select2bs4"
             style="width:100%"
             disabled aria-required="true"
@@ -160,7 +163,7 @@
         <option value="{{ $id }}" selected>{{ $usuario }}</option>
       @endforeach
     </select>
-    <input type="hidden" name="usuario_id" id="usuario_idp"
+    <input type="hidden" name="usuario_id" id="usuario_idp{{ $idSuffix }}"
            value="{{ old('usuario_id', array_key_first($usuarioscp ?? []) ?? '') }}">
   </div>
 
@@ -169,11 +172,11 @@
 {{-- ── Fila 3: observación ──────────────────────────────────── --}}
 <div class="form-group row">
   <div class="col-12">
-    <label for="observacion_prestamop" class="font-weight-bold">
+    <label for="observacion_prestamop{{ $idSuffix }}" class="font-weight-bold">
       <i class="fas fa-comment-alt fa-xs mr-1 text-muted" aria-hidden="true"></i>
       Observación
     </label>
-    <textarea name="observacion_prestamo" id="observacion_prestamop"
+    <textarea name="observacion_prestamo" id="observacion_prestamop{{ $idSuffix }}"
               class="form-control form-control-sm"
               rows="2"
               placeholder="Observación opcional del préstamo..."
@@ -192,22 +195,22 @@
     <div class="d-flex flex-wrap" style="gap:18px">
       <div class="custom-control custom-checkbox">
         <input type="checkbox" class="custom-control-input"
-               name="incluir_domingo" id="incluir_domingo" value="1">
-        <label class="custom-control-label" for="incluir_domingo">
+               name="incluir_domingo" id="incluir_domingo{{ $idSuffix }}" value="1">
+        <label class="custom-control-label" for="incluir_domingo{{ $idSuffix }}">
           Cobrar domingos
         </label>
       </div>
       <div class="custom-control custom-checkbox">
         <input type="checkbox" class="custom-control-input"
-               name="incluir_festivo" id="incluir_festivo" value="1">
-        <label class="custom-control-label" for="incluir_festivo">
+               name="incluir_festivo" id="incluir_festivo{{ $idSuffix }}" value="1">
+        <label class="custom-control-label" for="incluir_festivo{{ $idSuffix }}">
           Cobrar feriados argentinos
         </label>
       </div>
       <div class="custom-control custom-checkbox">
-        <input type="checkbox" class="custom-control-input"
-               id="interes_prorrateado" value="1">
-        <label class="custom-control-label" for="interes_prorrateado">
+        <input type="checkbox" class="custom-control-input prestamo-interes-prorrateado"
+               id="interes_prorrateado{{ $idSuffix }}" value="1">
+        <label class="custom-control-label" for="interes_prorrateado{{ $idSuffix }}">
           Prorratear interés mensual según frecuencia
         </label>
       </div>
@@ -228,7 +231,7 @@
 {{-- Campos ocultos requeridos por el backend --}}
 <input type="hidden" name="activo"          value="1">
 <input type="hidden" name="estado"          value="C">
-<input type="hidden" name="monto_pendiente" id="monto_pendientep" value="">
+<input type="hidden" name="monto_pendiente" id="monto_pendientep{{ $idSuffix }}" class="prestamo-monto-pendientep" value="">
 
 {{-- ── Nota informativa ─────────────────────────────────────── --}}
 <div class="alert alert-light border-left border-info pl-3 py-2 mb-0" role="note">

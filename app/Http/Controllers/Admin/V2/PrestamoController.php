@@ -111,11 +111,12 @@ class PrestamoController extends Controller
         $uids       = $this->scopeUsuarioIds();
         $usuario_id = (int) $request->session()->get('usuario_id');
 
-        $clientes = Cliente::whereIn('usuario_id', $uids)->get();
-        $usuarios = Usuario::orderBy('id')
+        $clientes   = Cliente::whereIn('usuario_id', $uids)->get();
+        $usuarios   = Usuario::orderBy('id')
             ->where('id', $usuario_id)
             ->pluck('usuario', 'id')
             ->toArray();
+        $usuarioscp = $usuarios;
 
         if ($request->ajax() || $request->has('draw')) {
             $datas = DB::table('prestamo')
@@ -174,7 +175,7 @@ class PrestamoController extends Controller
                 ->make(true);
         }
 
-        return view('admin.v2.prestamo.index', compact('usuarios', 'clientes'));
+        return view('admin.v2.prestamo.index', compact('usuarios', 'usuarioscp', 'clientes'));
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -293,7 +294,21 @@ class PrestamoController extends Controller
         DB::transaction(function () use ($request, $incluirDomingo, $incluirFestivo) {
 
             // 1. Registrar el pago de cierre
-            Pago::create($request->all());
+            //    Se construye explícitamente (sin $request->all()) porque el
+            //    formulario incluye, además, los campos del préstamo NUEVO
+            //    (valor_cuota, usuario_id) y no deben mezclarse con los del
+            //    préstamo que se está cerrando.
+            Pago::create([
+                'prestamo_id'      => $request->prestamo_id,
+                'numero_cuota'     => $request->numero_cuota,
+                'valor_cuota'      => $request->cierre_valor_cuota,
+                'valor_abono'      => $request->valor_abono,
+                'abono'            => $request->abono,
+                'sync'             => $request->sync,
+                'fecha_pago'       => $request->fecha_pago,
+                'observacion_pago' => $request->observacion_pago,
+                'usuario_id'       => $request->cierre_usuario_id,
+            ]);
 
             // 2. Marcar todas las cuotas del préstamo como 'T' (transferido)
             DB::table('detalle_prestamo')

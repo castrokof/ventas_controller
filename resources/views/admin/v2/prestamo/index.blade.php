@@ -169,7 +169,7 @@
               aria-label="Formulario para crear un nuevo préstamo">
           @csrf
           <div class="card-body">
-            @include('admin.v2.prestamo.form-prestamo')
+            @include('admin.v2.pago_card.form-prestamo')
           </div>
           <div class="card-footer text-right">
             <button type="button" class="btn btn-secondary mr-2"
@@ -301,14 +301,17 @@
 
         <form id="form-refinanciar" method="post" novalidate>
           @csrf
-          {{-- Campos ocultos del préstamo a cerrar --}}
-          <input type="hidden" name="prestamo_id"   id="refi_prestamo_id">
-          <input type="hidden" name="numero_cuota"  id="refi_numero_cuota">
-          <input type="hidden" name="valor_cuota"   id="refi_valor_cuota">
-          <input type="hidden" name="abono"         value="S">
-          <input type="hidden" name="sync"          value="N">
-          <input type="hidden" name="fecha_pago"    id="refi_fecha_pago">
-          <input type="hidden" name="usuario_id"    id="refi_usuario_id" value="{{ session('usuario_id') }}">
+          {{-- Campos ocultos del préstamo a cerrar.
+               IMPORTANTE: "cierre_valor_cuota" y "cierre_usuario_id" usan nombres
+               distintos a los del nuevo préstamo (valor_cuota / usuario_id, más abajo
+               en form-prestamo) para que no se pisen entre sí al serializar el form. --}}
+          <input type="hidden" name="prestamo_id"        id="refi_prestamo_id">
+          <input type="hidden" name="numero_cuota"       id="refi_numero_cuota">
+          <input type="hidden" name="cierre_valor_cuota" id="refi_valor_cuota">
+          <input type="hidden" name="abono"               value="S">
+          <input type="hidden" name="sync"                value="N">
+          <input type="hidden" name="fecha_pago"          id="refi_fecha_pago">
+          <input type="hidden" name="cierre_usuario_id"   id="refi_usuario_id" value="{{ session('usuario_id') }}">
 
           <div class="card-body">
 
@@ -353,7 +356,7 @@
             </div>
 
             {{-- ── Sección B: Nuevo préstamo ────────────────────── --}}
-            @include('admin.v2.prestamo.form-prestamo')
+            @include('admin.v2.pago_card.form-prestamo', ['idSuffix' => 'Refi'])
 
           </div>
 

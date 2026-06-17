@@ -233,6 +233,43 @@
   </div>
 </div>
 
+{{-- Modal: agregar préstamo al cliente (mismo formulario que pago-card V2) --}}
+<div class="modal fade ios-form" id="modal-prestamo-cliente" tabindex="-1"
+     role="dialog" aria-labelledby="modal-prestamo-cliente-titulo" aria-modal="true"
+     style="overflow-y:scroll">
+  <div class="modal-dialog modal-xl" role="document">
+    <div class="modal-content position-relative">
+      <div class="v2-loader" id="loader-prestamo-cliente">
+        <div class="spinner-border text-warning"></div>
+      </div>
+      <div class="modal-header bg-warning">
+        <h5 class="modal-title" id="modal-prestamo-cliente-titulo">
+          <i class="fas fa-money-bill-alt mr-1"></i>Agregar Préstamo
+        </h5>
+        <button type="button" class="close" data-dismiss="modal">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+
+      <form id="form-prestamo-cliente" method="post" novalidate>
+        @csrf
+        <div class="modal-body">
+          <span id="form_result_prestamo_cliente" role="alert" aria-live="polite"></span>
+          @include('admin.v2.pago_card.form-prestamo')
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">
+            <i class="fas fa-times mr-1"></i>Cancelar
+          </button>
+          <button type="submit" id="btn-guardar-prestamo-cliente" class="btn btn-warning">
+            <i class="fas fa-save mr-1"></i>Guardar préstamo
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 @endsection
 
 @section("scriptsPlugins")
@@ -255,9 +292,120 @@ var ES = {
     "oPaginate":{"sFirst":"«","sLast":"»","sNext":"›","sPrevious":"‹"}
 };
 var AJAX_URL = '{{ route("admin.v2.cliente.index") }}';
+var V2_PRESTAMO_GUARDAR_URL = '{{ route("admin.v2.prestamo.guardar") }}';
+
+/* ── Formato de moneda (igual que pago-card V2) ──────────────────── */
+function formatMonedaCli(num) {
+    num = Math.round(parseFloat(num) || 0);
+    return num ? num.toLocaleString('es-CO') : '';
+}
+function parseMonedaCli(str) {
+    return parseFloat(String(str || '').replace(/[^\d]/g, '')) || 0;
+}
+var CUOTAS_POR_MES_CLI = { Diario: 24, Semanal: 4, Quincenal: 2, Mensual: 1 };
+
+function calcularMontosPrestamoCliente() {
+    var $modal    = $('#modal-prestamo-cliente');
+    var monto     = parseMonedaCli($modal.find('.prestamo-montop').val());
+    var cuotas    = parseInt($modal.find('.prestamo-cuotas').val(), 10) || 0;
+    var interes   = parseFloat($modal.find('.prestamo-interes').val()) || 0;
+    var tipoPago  = $modal.find('.prestamo-tipo-pagop').val();
+    var prorratear= $modal.find('.prestamo-interes-prorrateado').is(':checked');
+
+    if (!monto || !cuotas || !tipoPago) {
+        $modal.find('.prestamo-monto-totalp, .prestamo-valor-cuotap, .prestamo-monto-pendientep').val('');
+        return;
+    }
+
+    var meses = (tipoPago === 'Mensual' || prorratear) ? cuotas / (CUOTAS_POR_MES_CLI[tipoPago] || 1) : 1;
+    var total = Math.round(monto + monto * (interes / 100) * meses);
+    var valorCuota = Math.round(total / cuotas);
+
+    $modal.find('.prestamo-monto-totalp').val(formatMonedaCli(total));
+    $modal.find('.prestamo-valor-cuotap').val(formatMonedaCli(valorCuota));
+    $modal.find('.prestamo-monto-pendientep').val(total);
+}
 
 $(function () {
     $('.select2bs4').select2({ theme: 'bootstrap4' });
+
+    /* ── Formato de miles en vivo + recálculo (modal Agregar Préstamo) ── */
+    $(document).on('input', '#modal-prestamo-cliente .prestamo-montop', function () {
+        var raw = parseMonedaCli($(this).val());
+        $(this).val(formatMonedaCli(raw));
+    });
+    $(document).on('input change',
+        '#modal-prestamo-cliente .prestamo-montop, #modal-prestamo-cliente .prestamo-cuotas, ' +
+        '#modal-prestamo-cliente .prestamo-interes, #modal-prestamo-cliente .prestamo-tipo-pagop, ' +
+        '#modal-prestamo-cliente .prestamo-interes-prorrateado',
+        calcularMontosPrestamoCliente
+    );
+
+    /* ── Agregar préstamo (mismo formulario que pago-card V2) ───────── */
+    $(document).on('click', '.prestamo', function () {
+        var id = $(this).attr('id');
+        var $modal = $('#modal-prestamo-cliente');
+
+        $('#form-prestamo-cliente')[0].reset();
+        $('#form_result_prestamo_cliente').html('');
+        $modal.find('.prestamo-monto-totalp, .prestamo-valor-cuotap, .prestamo-monto-pendientep').val('');
+        $modal.find('.select2bs4').val(null).trigger('change');
+        $modal.find('#cliente_id').val(id).trigger('change');
+        $modal.modal('show');
+    });
+
+    $('#form-prestamo-cliente').on('submit', function (e) {
+        e.preventDefault();
+        var $form = $(this);
+
+        Swal.fire({
+            title: '¿Crear el préstamo?',
+            text:  'Se generarán las cuotas automáticamente.',
+            icon:  'question',
+            showCancelButton:  true,
+            confirmButtonText: 'Sí, crear',
+            cancelButtonText:  'Cancelar',
+        }).then(function (result) {
+            if (!result.value) return;
+
+            $('#loader-prestamo-cliente').addClass('active');
+            $('#btn-guardar-prestamo-cliente').prop('disabled', true);
+
+            var $monto = $form.find('.prestamo-montop');
+            var $total = $form.find('.prestamo-monto-totalp');
+            var $cuota = $form.find('.prestamo-valor-cuotap');
+            var montoPlano = parseMonedaCli($monto.val());
+            var totalPlano = parseMonedaCli($total.val());
+            var cuotaPlano = parseMonedaCli($cuota.val());
+            $monto.val(montoPlano); $total.val(totalPlano); $cuota.val(cuotaPlano);
+            var formData = $form.serialize();
+            $monto.val(formatMonedaCli(montoPlano));
+            $total.val(formatMonedaCli(totalPlano));
+            $cuota.val(formatMonedaCli(cuotaPlano));
+
+            $.ajax({
+                url: V2_PRESTAMO_GUARDAR_URL, method: 'POST', data: formData, dataType: 'json',
+                success: function (data) {
+                    $('#modal-prestamo-cliente').modal('hide');
+                    Swal.fire({ icon: 'success', title: 'Préstamo creado correctamente', showConfirmButton: false, timer: 1800 });
+                },
+                error: function (xhr) {
+                    var errores = xhr.responseJSON && xhr.responseJSON.errors;
+                    var h = '<div class="alert alert-danger py-1 mb-1">';
+                    if (errores) {
+                        errores.forEach(function (err) { h += '<div>' + err + '</div>'; });
+                    } else {
+                        h += 'No se pudo guardar el préstamo. Intente de nuevo.';
+                    }
+                    $('#form_result_prestamo_cliente').html(h + '</div>');
+                },
+                complete: function () {
+                    $('#loader-prestamo-cliente').removeClass('active');
+                    $('#btn-guardar-prestamo-cliente').prop('disabled', false);
+                },
+            });
+        });
+    });
 
     /* ── DataTable ───────────────────────────────── */
     $('#skeleton-clientes').hide();

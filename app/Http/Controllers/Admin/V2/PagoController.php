@@ -521,6 +521,21 @@ class PagoController extends Controller
         // ── Adelanto de cuota (fecha futura) ────────────────────────────
         if ($request->fecha_pago > $hoy) {
 
+            // Cobro $0: no hubo adelanto real, la cuota debe quedar atrasada
+            // (igual que un cobro $0 de una cuota con fecha de hoy o anterior).
+            if ($request->valor_abono == 0 && $saldo->monto_atrasado == 0) {
+                $this->crearPago($request);
+                DB::table('detalle_prestamo')
+                    ->where([['prestamo_id',$request->prestamo_id],['d_numero_cuota',$request->numero_cuota]])
+                    ->update(['estado'=>'A','valor_cuota_pagada'=>0,'updated_at'=>now()]);
+                DB::table('prestamo')->where('idp',$request->prestamo_id)->update([
+                    'monto_atrasado'=>($saldo->monto_atrasado+$vcd),
+                    'cuotas_atrasadas'=>($saldo->cuotas_atrasadas+1),
+                    'updated_at'=>now(),
+                ]);
+                return response()->json(['success'=>'ok']);
+            }
+
             if ($request->valor_abono < $vcd && $saldo->monto_atrasado == 0) {
                 $this->crearPago($request);
                 DB::table('detalle_prestamo')
@@ -646,6 +661,16 @@ class PagoController extends Controller
                     'cuotas_atrasadas'=>($sa->cuotas_atrasadas-1),'updated_at'=>now(),
                 ]);
                 return response()->json(['success'=>'okca']);
+            }
+
+            // Cobro $0 sobre una cuota ya atrasada: se registra el intento de
+            // cobro pero, al no haber abono real, ni el saldo ni el atraso cambian.
+            if ($request->valor_abono == 0) {
+                $this->crearPago($request);
+                DB::table('detalle_prestamo')
+                    ->where([['prestamo_id',$request->prestamo_id],['d_numero_cuota',$request->numero_cuota]])
+                    ->update(['estado'=>'A','valor_cuota_pagada'=>$pagoqa,'updated_at'=>now()]);
+                return response()->json(['success'=>'abonoa']);
             }
 
             if ($request->valor_abono < $request->vatraso && $request->valor_abono > 0) {
