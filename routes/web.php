@@ -336,6 +336,7 @@ Route::prefix('admin/v2')
     Route::middleware('soloEmpresaAdmin')->group(function () {
         Route::get( 'gps',           'GpsController@index')    ->name('gps.index');
         Route::get( 'gps/datos',     'GpsController@datos')    ->name('gps.datos');
+        Route::get( 'gps/pagos',     'GpsController@pagos')    ->name('gps.pagos');
         Route::get( 'gps/usuarios',  'GpsController@usuarios') ->name('gps.usuarios');
     });
     /* El cobrador puede registrar su propia posición (sin restricción de rol) */

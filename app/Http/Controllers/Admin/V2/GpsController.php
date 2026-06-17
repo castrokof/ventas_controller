@@ -138,6 +138,40 @@ class GpsController extends Controller
     }
 
     /**
+     * Puntos GPS tomados al registrar el pago de una cuota (no son una ruta
+     * continua: cada punto es un cobro independiente, por eso se devuelven
+     * para dibujarse como marcadores sueltos, no como polilínea).
+     * GET /admin/v2/gps/pagos?usuario_id=X&fecha=YYYY-MM-DD
+     */
+    public function pagos(Request $request): JsonResponse
+    {
+        $uids       = $this->scopeUsuarioIds();
+        $usuarioId  = (int) ($request->usuario_id ?? session('usuario_id'));
+        $fecha      = $request->fecha ?? Carbon::now('America/Argentina/Buenos_Aires')->toDateString();
+
+        if (!in_array($usuarioId, $uids)) {
+            return response()->json(['ok' => false, 'msg' => 'Sin permiso'], 403);
+        }
+
+        $puntos = DB::table('pago')
+            ->join('prestamo', 'pago.prestamo_id', '=', 'prestamo.idp')
+            ->join('cliente',  'prestamo.cliente_id', '=', 'cliente.id')
+            ->where('pago.usuario_id', $usuarioId)
+            ->whereDate('pago.fecha_pago', $fecha)
+            ->whereNotNull('pago.latitud')
+            ->whereNotNull('pago.longitud')
+            ->orderBy('pago.created_at')
+            ->select(
+                'pago.id as pago_id', 'pago.latitud', 'pago.longitud',
+                'pago.fecha_pago', 'pago.created_at', 'pago.valor_abono', 'pago.numero_cuota',
+                'pago.prestamo_id', 'cliente.nombres', 'cliente.apellidos', 'cliente.documento'
+            )
+            ->get();
+
+        return response()->json(['ok' => true, 'puntos' => $puntos]);
+    }
+
+    /**
      * Lista de usuarios visibles para el selector del formulario.
      * GET /admin/v2/gps/usuarios
      */

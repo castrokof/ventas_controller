@@ -37,6 +37,7 @@
 .dot-activo  { width:8px;height:8px;border-radius:50%;background:#22c55e;animation:blink 1s infinite; }
 .dot-inactivo{ width:8px;height:8px;border-radius:50%;background:#94a3b8; }
 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+.leaflet-popup-content { font-size: .8rem; }
 </style>
 @endsection
 
@@ -47,12 +48,22 @@
 <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap" style="gap:8px">
     <div>
         <h4 class="mb-0"><i class="fas fa-map-marked-alt text-primary mr-2"></i>GPS — Monitoreo de Cobradores</h4>
-        <small class="text-muted">Ruta del día · punto GPS cada 3 minutos · estimación de consumo de gasolina</small>
+        <small class="text-muted" id="txt-subtitulo">Ruta del día · punto GPS cada 3 minutos · estimación de consumo de gasolina</small>
     </div>
     <div id="gps-status" class="bg-light text-muted border">
         <span class="dot-inactivo" id="dot-status"></span>
         <span id="txt-status">Rastreo inactivo</span>
     </div>
+</div>
+
+{{-- ── Selector de vista ─────────────────────────────────────── --}}
+<div class="btn-group btn-group-sm mb-3" role="group" id="grp-modo-gps">
+    <button type="button" class="btn btn-primary active" data-modo="ruta">
+        <i class="fas fa-route mr-1"></i>Ruta de seguimiento
+    </button>
+    <button type="button" class="btn btn-outline-primary" data-modo="pagos">
+        <i class="fas fa-map-pin mr-1"></i>Puntos de cobro
+    </button>
 </div>
 
 {{-- ── Filtros ───────────────────────────────────────────────── --}}
@@ -74,12 +85,12 @@
                 <input type="date" id="sel-fecha" class="form-control form-control-sm"
                        value="{{ now('America/Argentina/Buenos_Aires')->toDateString() }}">
             </div>
-            <div class="col-md-2 col-6">
+            <div class="col-md-2 col-6 campo-ruta">
                 <label class="small mb-1">Rendimiento (km/L)</label>
                 <input type="number" id="inp-rendimiento" class="form-control form-control-sm"
                        value="40" min="1" step="0.5">
             </div>
-            <div class="col-md-2 col-6">
+            <div class="col-md-2 col-6 campo-ruta">
                 <label class="small mb-1">Precio combustible ($/L)</label>
                 <input type="number" id="inp-precio" class="form-control form-control-sm"
                        value="1500" min="1" step="1">
@@ -98,22 +109,22 @@
     <div class="col-6 col-md-3 mb-2">
         <div class="stat-box">
             <div class="stat-val" id="st-puntos">0</div>
-            <div class="stat-lbl">Puntos registrados</div>
+            <div class="stat-lbl" id="st-puntos-lbl">Puntos registrados</div>
         </div>
     </div>
-    <div class="col-6 col-md-3 mb-2">
+    <div class="col-6 col-md-3 mb-2 campo-ruta">
         <div class="stat-box">
             <div class="stat-val" id="st-km">0</div>
             <div class="stat-lbl">Kilómetros recorridos</div>
         </div>
     </div>
-    <div class="col-6 col-md-3 mb-2">
+    <div class="col-6 col-md-3 mb-2 campo-ruta">
         <div class="stat-box">
             <div class="stat-val" id="st-litros">0</div>
             <div class="stat-lbl">Litros consumidos</div>
         </div>
     </div>
-    <div class="col-6 col-md-3 mb-2">
+    <div class="col-6 col-md-3 mb-2 campo-ruta">
         <div class="stat-box">
             <div class="stat-val" id="st-costo">$0</div>
             <div class="stat-lbl">Costo estimado gasolina</div>
@@ -147,6 +158,7 @@ const MI_UID    = {{ (int) session('usuario_id') }};
 var map        = null;
 var rutaLine   = null;
 var markers    = [];
+var modoVista  = 'ruta'; // 'ruta' = seguimiento cada 3 min · 'pagos' = puntos de cobro
 
 function initMapa() {
     if (map) return;
@@ -163,6 +175,7 @@ function limpiarMapa() {
     markers = [];
 }
 
+/* ── Vista "Ruta de seguimiento": polilínea conectando los puntos ── */
 function dibujarRuta(puntos) {
     limpiarMapa();
     if (!puntos || !puntos.length) {
@@ -202,7 +215,80 @@ function dibujarRuta(puntos) {
     map.fitBounds(rutaLine.getBounds(), { padding: [20, 20] });
 }
 
-/* ── Cargar datos ──────────────────────────────────────────────── */
+/* ── Vista "Puntos de cobro": un marcador suelto por cada pago,      ──
+   ── sin conectar (no es un trayecto, son cobros independientes)    ── */
+var cobroIcon = L.divIcon({ className: '', html:
+    '<div style="background:#f59e0b;width:18px;height:18px;border-radius:50%;border:2px solid #fff;' +
+    'box-shadow:0 0 4px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;' +
+    'color:#fff;font-size:10px;font-weight:700">$</div>',
+    iconSize:[18,18], iconAnchor:[9,9]
+});
+
+function dibujarPuntosPago(puntos) {
+    limpiarMapa();
+    if (!puntos || !puntos.length) {
+        $('#mapa-msg').show().text('Sin cobros con ubicación registrada para esta fecha / cobrador.');
+        $('#resumen-gps').css('display', 'none!important');
+        return;
+    }
+    $('#mapa-msg').hide();
+
+    puntos.forEach(function(p) {
+        var lat = parseFloat(p.latitud), lng = parseFloat(p.longitud);
+        var m = L.marker([lat, lng], { icon: cobroIcon }).addTo(map);
+        var valor = Number(p.valor_abono || 0).toLocaleString('es-CO');
+        var cliente = [p.nombres, p.apellidos].filter(Boolean).join(' ');
+        var html =
+            '<div>' +
+            '<b>Fecha:</b> ' + (p.fecha_pago || '') + '<br>' +
+            '<b>Crédito #:</b> ' + p.prestamo_id + ' &middot; cuota ' + p.numero_cuota + '<br>' +
+            '<b>Cliente:</b> ' + (cliente || '—') + '<br>' +
+            '<b>Documento:</b> ' + (p.documento || '—') + '<br>' +
+            '<b>Valor cobrado:</b> $' + valor +
+            '</div>';
+        m.bindPopup(html);
+        markers.push(m);
+    });
+
+    var grupo = L.featureGroup(markers);
+    map.fitBounds(grupo.getBounds(), { padding: [30, 30], maxZoom: 17 });
+}
+
+/* ── Alternar entre las dos vistas ────────────────────────────── */
+function aplicarModoUI() {
+    $('#grp-modo-gps button').removeClass('active btn-primary').addClass('btn-outline-primary');
+    $('#grp-modo-gps button[data-modo="' + modoVista + '"]').addClass('active btn-primary').removeClass('btn-outline-primary');
+
+    if (modoVista === 'ruta') {
+        $('.campo-ruta').show();
+        $('#btn-cargar').html('<i class="fas fa-search mr-1"></i>Ver ruta');
+        $('#txt-subtitulo').text('Ruta del día · punto GPS cada 3 minutos · estimación de consumo de gasolina');
+        $('#st-puntos-lbl').text('Puntos registrados');
+    } else {
+        $('.campo-ruta').hide();
+        $('#btn-cargar').html('<i class="fas fa-search mr-1"></i>Ver cobros');
+        $('#txt-subtitulo').text('Puntos donde se registró el cobro de cada cuota (no es un trayecto continuo)');
+        $('#st-puntos-lbl').text('Cobros registrados');
+    }
+}
+
+$('#grp-modo-gps button').on('click', function () {
+    modoVista = $(this).data('modo');
+    aplicarModoUI();
+    if ($('#sel-usuario').val() && $('#sel-fecha').val()) {
+        cargarDatos();
+    }
+});
+
+/* ── Cargar datos según la vista activa ──────────────────────────── */
+function cargarDatos() {
+    if (modoVista === 'ruta') {
+        cargarRuta();
+    } else {
+        cargarPuntosPago();
+    }
+}
+
 function cargarRuta() {
     var uid   = $('#sel-usuario').val();
     var fecha = $('#sel-fecha').val();
@@ -235,6 +321,7 @@ function cargarRuta() {
 
             if (puntos.length) {
                 $('#resumen-gps').removeAttr('style').show();
+                aplicarModoUI();
             } else {
                 $('#resumen-gps').css('display', 'none!important');
             }
@@ -246,6 +333,46 @@ function cargarRuta() {
         },
         complete: function() {
             $('#btn-cargar').prop('disabled', false).html('<i class="fas fa-search mr-1"></i>Ver ruta');
+        }
+    });
+}
+
+function cargarPuntosPago() {
+    var uid   = $('#sel-usuario').val();
+    var fecha = $('#sel-fecha').val();
+    if (!uid || !fecha) return;
+
+    $('#btn-cargar').prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i>Cargando...');
+    initMapa();
+
+    $.ajax({
+        url:      BASE_GPS + '/pagos',
+        method:   'GET',
+        dataType: 'json',
+        data:     { usuario_id: uid, fecha: fecha },
+        success: function(resp) {
+            if (!resp.ok) {
+                $('#mapa-msg').show().text('Error al cargar datos.');
+                return;
+            }
+            var puntos = resp.puntos || [];
+
+            $('#st-puntos').text(puntos.length);
+
+            if (puntos.length) {
+                $('#resumen-gps').removeAttr('style').show();
+                aplicarModoUI();
+            } else {
+                $('#resumen-gps').css('display', 'none!important');
+            }
+
+            dibujarPuntosPago(puntos);
+        },
+        error: function() {
+            $('#mapa-msg').show().text('Error de red al cargar los cobros.');
+        },
+        complete: function() {
+            $('#btn-cargar').prop('disabled', false).html('<i class="fas fa-search mr-1"></i>Ver cobros');
         }
     });
 }
@@ -289,16 +416,19 @@ function activarGps() {
 }
 
 $(function() {
+    aplicarModoUI();
+
     /* Cargar hoy al abrir si hay un cobrador seleccionado */
     if ($('#sel-usuario').val()) {
         initMapa();
-        cargarRuta();
+        cargarDatos();
     }
 
-    $('#btn-cargar').on('click', cargarRuta);
+    $('#btn-cargar').on('click', cargarDatos);
 
     /* Recalcular estimación sin recargar mapa cuando cambia rendimiento/precio */
     $('#inp-rendimiento, #inp-precio').on('input', function() {
+        if (modoVista !== 'ruta') return;
         var kmText = $('#st-km').text().replace(' km', '');
         var km     = parseFloat(kmText) || 0;
         if (!km) return;
